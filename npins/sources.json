@@ -1,18 +1,5 @@
 {
   "pins": {
-    "cf": {
-      "type": "Git",
-      "repository": {
-        "type": "GitHub",
-        "owner": "jzbor",
-        "repo": "cornflakes"
-      },
-      "branch": "main",
-      "submodules": false,
-      "revision": "7ef6d8be9b66f46cee3af1d5797e01f301b93149",
-      "url": "https://github.com/jzbor/cornflakes/archive/7ef6d8be9b66f46cee3af1d5797e01f301b93149.tar.gz",
-      "hash": "sha256-OrfTRBwerFrlK1fbWhu1eW40XUrOdE/Rq7IyxthEpcA="
-    },
     "crane": {
       "type": "Git",
       "repository": {
