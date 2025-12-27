@@ -75,7 +75,7 @@ impl NixOutput {
     pub fn drv_name(&self) -> NieResult<String> {
         let paths = self.build(false, &[])?;
         let path = paths.first()
-            .ok_or(NieError::NoOutputPath(self.reference()))?;
+            .ok_or(NieError::NoOutputPath(Box::new(self.reference())))?;
 
         let name = path.file_name()
             .unwrap_or_default()

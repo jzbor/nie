@@ -32,6 +32,8 @@ pub struct NixFileReference {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepositoryLocation {
     Git(String),
+    Tarball(String),
+    Github(String, String, Option<String>),
 }
 
 
@@ -132,13 +134,14 @@ impl FromStr for NixReference {
         let mut tokens: VecDeque<_> = s.split("#").collect();
         let url = tokens.pop_front()
             .ok_or(NieError::InvalidLocationSpec(s.to_owned()))?;
-        let location = RepositoryLocation::Git(url.to_string());
+        let location = RepositoryLocation::from_str(url)
+            .map_err(|_| NieError::InvalidLocationSpec(s.to_owned()))?;
         let mut attribute = AttributePath::default();
         let mut checkout_args = BTreeMap::default();
         let mut filename = None;
 
         for token in tokens {
-            if let Some((k, v)) = token.split_once(":") {
+            if let Some((k, v)) = token.split_once('=') {
                 match k {
                     "f" | "file" => filename = Some(v.into()),
                     _ => { checkout_args.insert(k.to_owned(), v.to_owned()); },
@@ -158,6 +161,30 @@ impl FromStr for NixReference {
             },
             attribute
         })
+    }
+}
+
+impl FromStr for RepositoryLocation {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(rest) = s.strip_prefix("github://") {
+            let (owner, mut repo) = rest.split_once('/')
+                .ok_or(())?;
+            let mut branch = None;
+
+            if let Some((r, b)) = repo.split_once('/') {
+                repo = r;
+                branch = Some(b.to_owned());
+            }
+
+            Ok(RepositoryLocation::Github(owner.to_owned(), repo.to_owned(), branch))
+        } else if (s.starts_with("https://") || s.starts_with("http://"))
+            && (s.ends_with(".tar.gz") || s.ends_with(".tag.xz") || s.ends_with(".tag.bz2")) {
+            Ok(RepositoryLocation::Tarball(s.to_owned()))
+        } else {
+            Ok(RepositoryLocation::Git(s.to_owned()))
+        }
     }
 }
 
@@ -205,7 +232,9 @@ impl Display for RepositoryLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use RepositoryLocation::*;
         match self {
-            Git(url) => write!(f, "{}", url),
+            Git(url) | Tarball(url) => write!(f, "{}", url),
+            Github(owner, repo, branch) => write!(f, "github://{}/{}{}", owner, repo,
+                branch.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
         }
     }
 }

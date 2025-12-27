@@ -22,7 +22,7 @@ impl super::Command for RunCommand {
         let file = NixFile::fetch(self.reference.file())?;
         let output = file.output(self.reference.attribute().clone())?;
         let paths: Vec<_> = NixOutput::fetch_and_build(&self.reference, false, &[])?;
-        let path = paths.first().ok_or(NieError::NoOutputPath(self.reference))?;
+        let path = paths.first().ok_or(NieError::NoOutputPath(Box::new(self.reference)))?;
         let name = output.drv_name()?;
         let bin_path = path.join("bin").join(name);
 

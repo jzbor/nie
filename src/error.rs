@@ -40,7 +40,7 @@ pub enum NieError {
     BuiltPathMissing(String),
 
     #[error("Expected built output path from \"{0}\"")]
-    NoOutputPath(NixReference),
+    NoOutputPath(Box<NixReference>),
 
     #[error("Invalid location specification \"{0}\"")]
     InvalidLocationSpec(String),

@@ -69,7 +69,7 @@ impl NixFile {
     }
 
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
-        let full_expr = include_str!("./discover.nix");
+        let full_expr = include_str!("./nix/discover.nix");
         let value = nix::exec_output_json("nix-instantiate", [
             "--eval",
             "--raw",

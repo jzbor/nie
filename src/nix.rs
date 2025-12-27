@@ -8,26 +8,57 @@ use crate::error::{NieError, NieResult};
 use crate::location::AttributePath;
 
 pub fn fetch_git(url: &str, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
-    let mut serialized_args = String::new();
-    serialized_args.push_str("{ ");
-    for (k, v) in args {
-        serialized_args.push_str(k);
-        serialized_args.push_str(" = ");
-        serialized_args.push('"');
-        serialized_args.push_str(v);
-        serialized_args.push('"');
-        serialized_args.push_str("; ");
+    let out = exec_output("nix-instantiate", [
+        "--eval",
+        "--raw",
+        "--expr",
+        "--log-format", "bar",
+        include_str!("./nix/fetch_git.nix"),
+        "--arg", "url", &escape_url(url),
+        "--arg", "args", serialize_args(args).as_str(),
+    ])?;
+
+    match out.lines().next() {
+        Some(line) => Ok(PathBuf::from(line)),
+        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
     }
-    serialized_args.push('}');
+}
+
+pub fn fetch_tarball(url: &str, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
+    let out = exec_output("nix-instantiate", [
+        "--eval",
+        "--raw",
+        "--expr",
+        "--log-format", "bar",
+        include_str!("./nix/fetch_tarball.nix"),
+        "--arg", "url", &escape_url(url),
+        "--arg", "args", serialize_args(args).as_str(),
+    ])?;
+
+    match out.lines().next() {
+        Some(line) => Ok(PathBuf::from(line)),
+        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
+    }
+}
+
+pub fn fetch_github(owner: &str, repo: &str, branch: Option<&str>, args: &BTreeMap<String, String>)
+        -> NieResult<PathBuf> {
+    let branch_arg = if let Some(branch) = branch {
+        format!("\"{}\"", branch)
+    } else {
+        "null".to_owned()
+    };
 
     let out = exec_output("nix-instantiate", [
         "--eval",
         "--raw",
         "--expr",
         "--log-format", "bar",
-        "{ url, args }: fetchGit ({ inherit url; submodules = true; shallow = true; } // args)",
-        "--arg", "url", &escape_url(url),
-        "--arg", "args", serialized_args.as_str(),
+        include_str!("./nix/fetch_github.nix"),
+        "--arg", "owner", &format!("\"{}\"", owner),
+        "--arg", "repo", &format!("\"{}\"", repo),
+        "--arg", "branch", branch_arg.as_str(),
+        "--arg", "args", serialize_args(args).as_str(),
     ])?;
 
     match out.lines().next() {
@@ -96,6 +127,19 @@ pub fn shell(paths: &[PathBuf], extra_args: &[String]) -> NieResult<()> {
 
     args.extend_from_slice(extra_args);
     exec("nix-shell", &args)
+}
+
+fn serialize_args(args: &BTreeMap<String, String>) -> String {
+    let mut serialized_args = String::new();
+    serialized_args.push_str("{ ");
+    for (k, v) in args {
+        serialized_args.push_str(k);
+        serialized_args.push_str(" = ");
+        serialized_args.push_str(v);
+        serialized_args.push_str("; ");
+    }
+    serialized_args.push('}');
+    serialized_args
 }
 
 fn escape_url(url: &str) -> String {
