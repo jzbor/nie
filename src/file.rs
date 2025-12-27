@@ -49,6 +49,11 @@ impl NixFile {
         Ok(file)
     }
 
+    pub fn fetch(reference: &NixFileReference) -> NieResult<Self> {
+        let checkout = Checkout::create(reference.repository().clone())?;
+        checkout.file(reference.filename().cloned())
+    }
+
     pub fn output(&self, attr: AttributePath) -> NieResult<NixOutput> {
         NixOutput::new(self.clone(), attr)
     }
@@ -63,17 +68,17 @@ impl NixFile {
         self.0.checkout.repository().with_file(self.0.filename.clone())
     }
 
-    pub fn attributes(&self) -> NieResult<AttributeIterator<'_>> {
+    pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
         let full_expr = include_str!("./discover.nix");
         let value = nix::exec_output_json("nix-instantiate", [
             "--eval",
             "--raw",
             "-E", full_expr,
             "--arg", "path", self.path().to_string_lossy().to_string().as_str(),
-            "--arg", "maxdepth", "10",
+            "--arg", "maxdepth", depth.to_string().as_str(),
         ])?;
 
-        let attributes = Self::unfold_attributes(vec!(), AttributePath::default(), value)?.into();
+        let attributes = Self::unfold_attributes(vec!(), AttributePath::default(), value, reject_broken)?.into();
 
         Ok(AttributeIterator {
             _file: self,
@@ -81,17 +86,23 @@ impl NixFile {
         })
     }
 
-    fn unfold_attributes(mut acc: Vec<AttributePath>, parent: AttributePath, value: serde_json::Value) -> NieResult<Vec<AttributePath>> {
+    fn unfold_attributes(mut acc: Vec<AttributePath>, parent: AttributePath,
+            value: serde_json::Value, reject_broken: bool) -> NieResult<Vec<AttributePath>> {
         use serde_json::Value::*;
         let map = match value {
             Object(map) => map,
+            String(s) => if s.as_str() == "<broken>" && !reject_broken {
+                return Ok(acc)
+            } else{
+                return Err(NieError::BrokenAttribute(parent))
+            },
             _ => return Err(NieError::JsonUnfolding(value)),
         };
 
         for (k, v) in map {
             let new = parent.child(k);
             acc.push(new.clone());
-            acc = Self::unfold_attributes(acc, new, v)?;
+            acc = Self::unfold_attributes(acc, new, v, reject_broken)?;
         }
 
         Ok(acc)

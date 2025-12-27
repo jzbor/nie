@@ -30,7 +30,7 @@ in rec {
     ];
     postFixup = ''
       wrapProgram $out/bin/nie \
-        --set PATH ${pkgs.lib.makeBinPath [ pkgs.nix pkgs.git pkgs.openssh ]}
+        --prefix PATH ${pkgs.lib.makeBinPath [ pkgs.nix ]}
     '';
     postInstall = ''
       mkdir ./manpages ./completions

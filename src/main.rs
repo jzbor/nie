@@ -34,6 +34,9 @@ enum Subcommand {
     /// Build a package from a Nix repo
     Build(commands::build::BuildCommand),
 
+    /// Run an executable from a Nix repo
+    Run(commands::run::RunCommand),
+
     /// Enter a shell containing a package from a Nix repo
     Shell(commands::shell::ShellCommand),
 
@@ -51,6 +54,7 @@ fn main() {
         Build(cmd) => cmd.exec(),
         Show(cmd) => cmd.exec(),
         Shell(cmd) => cmd.exec(),
+        Run(cmd) => cmd.exec(),
     };
 
     error::resolve(result)

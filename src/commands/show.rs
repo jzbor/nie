@@ -9,6 +9,12 @@ use crate::location::NixReference;
 pub struct ShowCommand {
     /// Nix references to fetch and show
     refs: Vec<NixReference>,
+
+    #[clap(short, long, default_value_t = 5)]
+    depth: u32,
+
+    #[clap(short, long)]
+    reject_broken: bool,
 }
 
 impl super::Command for ShowCommand {
@@ -22,7 +28,7 @@ impl super::Command for ShowCommand {
 
         for (reference, file) in iter::zip(self.refs.into_iter(), files.into_iter()) {
             println!("[{}]:", reference);
-            file.attributes()?
+            file.attributes(self.depth, self.reject_broken)?
                 .for_each(|a| println!("{:>width$}{}", "", a.name().unwrap_or_default(), width=(a.depth() + 1) * 2));
             println!()
         }

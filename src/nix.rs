@@ -55,7 +55,7 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
     Ok(found)
 }
 
-pub fn build(path: &Path, attribute: &AttributePath, out_link: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
     let mut args = vec![
         path.to_string_lossy().to_string(),
         "--log-format".to_owned(), "bar".to_owned(),
@@ -66,7 +66,7 @@ pub fn build(path: &Path, attribute: &AttributePath, out_link: bool, extra_args:
         args.push(attribute.to_string());
     }
 
-    if !out_link {
+    if !out_links {
         args.push("--no-out-link".to_owned());
     }
 
@@ -99,7 +99,9 @@ pub fn shell(paths: &[PathBuf], extra_args: &[String]) -> NieResult<()> {
 }
 
 fn escape_url(url: &str) -> String {
-    if url.starts_with("./") || url.starts_with("/") {
+    if url == "." {
+        "./.".to_owned()
+    } else if url.starts_with("./") || url.starts_with("/") {
         url.to_owned()
     } else {
         format!("\"{}\"", url)

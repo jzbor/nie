@@ -3,7 +3,7 @@ use std::{io, process};
 
 use colored::Colorize;
 
-use crate::location::AttributePath;
+use crate::location::{AttributePath, NixReference};
 
 pub type NieResult<T> = Result<T, NieError>;
 
@@ -30,11 +30,17 @@ pub enum NieError {
     #[error("Failed to unfold JSON value ({0})")]
     JsonUnfolding(serde_json::Value),
 
+    #[error("Broken output attribute ({0})")]
+    BrokenAttribute(AttributePath),
+
     #[error("Could not find attribute \"{1}\" in file \"{0}\"")]
     AttributeNotFound(String, AttributePath),
 
     #[error("\"{0}\" should have been built, but does not exist (anymore)")]
     BuiltPathMissing(String),
+
+    #[error("Expected built output path from \"{0}\"")]
+    NoOutputPath(NixReference),
 
     #[error("Invalid location specification \"{0}\"")]
     InvalidLocationSpec(String),
