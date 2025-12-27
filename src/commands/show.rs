@@ -7,10 +7,8 @@ use crate::location::NixReference;
 
 #[derive(clap::Args)]
 pub struct ShowCommand {
+    /// Nix references to fetch and show
     refs: Vec<NixReference>,
-
-    #[clap(last = true)]
-    nix_args: Vec<String>,
 }
 
 impl super::Command for ShowCommand {

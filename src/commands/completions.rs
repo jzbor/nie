@@ -24,9 +24,9 @@ impl super::Command for CompletionsCommand {
         ];
 
         for (shell, ending) in shells {
-            let mut file = fs::File::create(self.directory.join(format!("niz.{}", ending)))
+            let mut file = fs::File::create(self.directory.join(format!("nie.{}", ending)))
                 .map_err(|e| NieError::Completions(e.to_string()))?;
-            clap_complete::aot::generate(*shell, &mut command, "niz", &mut file);
+            clap_complete::aot::generate(*shell, &mut command, "nie", &mut file);
         }
 
         Ok(())

@@ -58,6 +58,7 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
 pub fn build(path: &Path, attribute: &AttributePath, out_link: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
     let mut args = vec![
         path.to_string_lossy().to_string(),
+        "--log-format".to_owned(), "bar".to_owned(),
     ];
 
     if !attribute.is_toplevel() {

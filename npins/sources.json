@@ -1,0 +1,44 @@
+{
+  "pins": {
+    "cf": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "jzbor",
+        "repo": "cornflakes"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "7ef6d8be9b66f46cee3af1d5797e01f301b93149",
+      "url": "https://github.com/jzbor/cornflakes/archive/7ef6d8be9b66f46cee3af1d5797e01f301b93149.tar.gz",
+      "hash": "sha256-OrfTRBwerFrlK1fbWhu1eW40XUrOdE/Rq7IyxthEpcA="
+    },
+    "crane": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "ipetkov",
+        "repo": "crane"
+      },
+      "branch": "master",
+      "submodules": false,
+      "revision": "01bc1d404a51a0a07e9d8759cd50a7903e218c82",
+      "url": "https://github.com/ipetkov/crane/archive/01bc1d404a51a0a07e9d8759cd50a7903e218c82.tar.gz",
+      "hash": "sha256-8qxEFpj4dVmIuPn9j9z6NTbU+hrcGjBOvaxTzre5HmM="
+    },
+    "nixpkgs": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nixos",
+        "repo": "nixpkgs"
+      },
+      "branch": "nixos-unstable",
+      "submodules": false,
+      "revision": "3e2499d5539c16d0d173ba53552a4ff8547f4539",
+      "url": "https://github.com/nixos/nixpkgs/archive/3e2499d5539c16d0d173ba53552a4ff8547f4539.tar.gz",
+      "hash": "sha256-QEhk0eXgyIqTpJ/ehZKg9IKS7EtlWxF3N7DXy42zPfU="
+    }
+  },
+  "version": 7
+}

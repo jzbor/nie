@@ -32,15 +32,12 @@ enum Subcommand {
     Man(commands::man::ManCommand),
 
     /// Build a package from a Nix repo
-    #[clap(hide = true)]
     Build(commands::build::BuildCommand),
 
     /// Enter a shell containing a package from a Nix repo
-    #[clap(hide = true)]
     Shell(commands::shell::ShellCommand),
 
     /// Show outputs of a package
-    #[clap(hide = true)]
     Show(commands::show::ShowCommand),
 }
 

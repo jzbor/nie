@@ -9,8 +9,10 @@ use crate::location::NixReference;
 
 #[derive(clap::Args)]
 pub struct BuildCommand {
+    /// Nix references to fetch and build
     refs: Vec<NixReference>,
 
+    /// Additional arguments for the nix builder (see nix-build(1))
     #[clap(last = true)]
     nix_args: Vec<String>,
 }

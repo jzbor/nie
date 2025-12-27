@@ -17,7 +17,7 @@ impl super::Command for ManCommand {
         let mut buffer: Vec<u8> = Default::default();
         man.render(&mut buffer)
             .map_err(|e| NieError::Man(e.to_string()))?;
-        let file = self.directory.join("niz.1");
+        let file = self.directory.join("nie.1");
         fs::write(&file, buffer)
             .map_err(|e| NieError::Man(e.to_string()))?;
         println!("Written {}", file.to_string_lossy());
@@ -27,7 +27,7 @@ impl super::Command for ManCommand {
             let mut buffer: Vec<u8> = Default::default();
             man.render(&mut buffer)
                 .map_err(|e| NieError::Man(e.to_string()))?;
-            let file = self.directory.join(format!("niz-{subcommand}.1"));
+            let file = self.directory.join(format!("nie-{subcommand}.1"));
             fs::write(&file, buffer)
                 .map_err(|e| NieError::Man(e.to_string()))?;
             println!("Written {}", file.to_string_lossy());
