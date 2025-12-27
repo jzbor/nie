@@ -1,0 +1,16 @@
+[package]
+name = "nie-nix"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "nie"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
+clap_complete = "4.5.62"
+clap_mangen = "0.2.31"
+colored = "3.0.0"
+serde_json = "1.0.147"
+thiserror = "2.0.17"
