@@ -48,6 +48,9 @@ pub enum NieError {
     #[error("Could not find file \"{0}\" in \"{1}\"")]
     NixFileNotFound(String, String),
 
+    #[error("Could not find alias \"{0}\"")]
+    AliasNotFound(String),
+
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {

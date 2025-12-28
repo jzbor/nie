@@ -1,5 +1,6 @@
 use crate::error::NieResult;
 
+pub mod aliases;
 pub mod build;
 pub mod completions;
 pub mod dev_shell;

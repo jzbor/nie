@@ -22,6 +22,9 @@ pub struct Args {
 
 #[derive(clap::Subcommand)]
 enum Subcommand {
+    /// Show and update aliases
+    Aliases(commands::aliases::AliasesCommand),
+
     /// Generate shell completions
     #[clap(hide = true)]
     Completions(commands::completions::CompletionsCommand),
@@ -53,6 +56,7 @@ fn main() {
 
     use Subcommand::*;
     let result = match args.subcommand {
+        Aliases(cmd) => cmd.exec(),
         Build(cmd) => cmd.exec(),
         Completions(cmd) => cmd.exec(),
         DevShell(cmd) => cmd.exec(),
