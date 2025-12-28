@@ -4,30 +4,31 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::aliases;
 use crate::error::NieError;
 
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct AttributePath(Vec<String>);
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub struct NixReference {
     file: NixFileReference,
     attribute: AttributePath,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct RepositoryReference {
-    location: RepositoryLocation,
-    checkout_args: BTreeMap<String, String>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub struct NixFileReference {
     repository: RepositoryReference,
     filename: Option<PathBuf>,
 }
 
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Default)]
+pub struct RepositoryReference {
+    location: RepositoryLocation,
+    checkout_args: BTreeMap<String, String>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepositoryLocation {
@@ -135,33 +136,33 @@ impl FromStr for NixReference {
         let mut tokens: VecDeque<_> = s.split("#").collect();
         let url = tokens.pop_front()
             .ok_or(NieError::InvalidLocationSpec(s.to_owned()))?;
-        let location = RepositoryLocation::from_str(url)
-            .map_err(|_| NieError::InvalidLocationSpec(s.to_owned()))?;
-        let mut attribute = AttributePath::default();
-        let mut checkout_args = BTreeMap::default();
-        let mut filename = None;
+
+        let mut nref = NixReference::default();
+
+        match aliases::aliases().and_then(|a| a.get(url).cloned()) {
+            Some(new_ref) => {
+                nref = new_ref;
+            },
+            None => {
+                nref.file.repository.location = RepositoryLocation::from_str(url)
+                    .map_err(|_| NieError::InvalidLocationSpec(s.to_owned()))?;
+            }
+        };
 
         for token in tokens {
             if let Some((k, v)) = token.split_once('=') {
                 match k {
-                    "f" | "file" => filename = Some(v.into()),
-                    _ => { checkout_args.insert(k.to_owned(), v.to_owned()); },
+                    "f" | "file" => nref.file.filename = Some(v.into()),
+                    _ => {
+                        nref.file.repository.checkout_args.insert(k.to_owned(), v.to_owned());
+                    },
                 }
             } else {
-                attribute = AttributePath::from_str(token)?;
+                nref.attribute = AttributePath::from_str(token)?;
             }
         }
 
-        Ok(NixReference {
-            file: NixFileReference {
-                repository: RepositoryReference {
-                    location,
-                    checkout_args,
-                },
-                filename,
-            },
-            attribute
-        })
+        Ok(nref)
     }
 }
 
@@ -282,5 +283,11 @@ impl FromStr for AttributePath {
         } else {
             Ok(AttributePath(s.split(".").map(|s| s.to_owned()).collect()))
         }
+    }
+}
+
+impl Default for RepositoryLocation {
+    fn default() -> Self {
+        RepositoryLocation::Git("./.".to_owned())
     }
 }

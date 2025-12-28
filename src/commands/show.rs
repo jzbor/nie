@@ -8,6 +8,7 @@ use crate::location::NixReference;
 #[derive(clap::Args)]
 pub struct ShowCommand {
     /// Nix references to fetch and show
+    #[clap(default_value = "./.")]
     refs: Vec<NixReference>,
 
     #[clap(short, long, default_value_t = 5)]

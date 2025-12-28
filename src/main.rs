@@ -10,6 +10,7 @@ mod location;
 mod store;
 mod nix;
 mod registry;
+mod aliases;
 
 
 #[derive(Parser)]
@@ -47,6 +48,7 @@ enum Subcommand {
 }
 
 fn main() {
+    error::resolve(aliases::load_aliases());
     let args = Args::parse();
 
     use Subcommand::*;

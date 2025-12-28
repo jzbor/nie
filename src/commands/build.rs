@@ -6,6 +6,7 @@ use crate::store::output::NixOutput;
 #[derive(clap::Args)]
 pub struct BuildCommand {
     /// Nix references to fetch and build
+    #[clap(default_value = "./.")]
     refs: Vec<NixReference>,
 
     /// Additional arguments for the nix builder (see nix-build(1))
