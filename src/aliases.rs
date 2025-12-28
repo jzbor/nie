@@ -38,6 +38,7 @@ pub fn load_aliases() -> NieResult<HashMap<String, NixReference>> {
     for file in alias_files() {
         let contents = fs::read_to_string(file)?;
         let pairs: Vec<_> = contents.lines()
+            .filter(|l| !l.is_empty() && !l.starts_with('#') && !l.starts_with("//"))
             .flat_map(|l| l.split_once(' '))
             .map(|(k, v)| NixReference::from_str(v).map(|v| (k.to_owned(), v)))
             .collect::<NieResult<_>>()?;
