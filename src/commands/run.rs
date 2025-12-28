@@ -12,7 +12,7 @@ pub struct RunCommand {
     #[clap(default_value = "./.")]
     reference: NixReference,
 
-    /// Additional arguments for the nix builder (see nix-build(1))
+    /// Arguments passed to command
     #[clap(last = true)]
     args: Vec<String>,
 }

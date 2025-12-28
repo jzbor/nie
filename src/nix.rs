@@ -155,6 +155,22 @@ pub fn shell(paths: &[PathBuf], extra_args: &[String]) -> NieResult<()> {
     exec("nix-shell", &args)
 }
 
+pub fn dev_shell(path: &Path, attribute: &AttributePath, extra_args: &[String]) -> NieResult<()> {
+    let mut args = vec![
+        path.to_string_lossy().to_string(),
+        "-A".to_string(),
+        attribute.to_string(),
+    ];
+
+    if let Ok(shell) = env::var("SHELL") {
+        args.push("--command".to_owned());
+        args.push(shell);
+    }
+
+    args.extend_from_slice(extra_args);
+    exec("nix-shell", &args)
+}
+
 fn serialize_args(args: &BTreeMap<String, String>) -> String {
     let mut serialized_args = String::new();
     serialized_args.push_str("{ ");

@@ -27,12 +27,16 @@ enum Subcommand {
     #[clap(hide = true)]
     Completions(commands::completions::CompletionsCommand),
 
+    /// Build a package from a Nix repo
+    Build(commands::build::BuildCommand),
+
+    /// Enter a dev shell from a Nix repo
+    #[clap(alias = "develop")]
+    DevShell(commands::dev_shell::DevShellCommand),
+
     /// Generate man pages
     #[clap(hide = true)]
     Man(commands::man::ManCommand),
-
-    /// Build a package from a Nix repo
-    Build(commands::build::BuildCommand),
 
     /// Run an executable from a Nix repo
     Run(commands::run::RunCommand),
@@ -49,12 +53,13 @@ fn main() {
 
     use Subcommand::*;
     let result = match args.subcommand {
-        Completions(cmd) => cmd.exec(),
-        Man(cmd) => cmd.exec(),
         Build(cmd) => cmd.exec(),
-        Show(cmd) => cmd.exec(),
-        Shell(cmd) => cmd.exec(),
+        Completions(cmd) => cmd.exec(),
+        DevShell(cmd) => cmd.exec(),
+        Man(cmd) => cmd.exec(),
         Run(cmd) => cmd.exec(),
+        Shell(cmd) => cmd.exec(),
+        Show(cmd) => cmd.exec(),
     };
 
     error::resolve(result)
