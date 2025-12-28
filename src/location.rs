@@ -33,6 +33,7 @@ pub struct NixFileReference {
 pub enum RepositoryLocation {
     Git(String),
     Tarball(String),
+    Codeberg(String, String, Option<String>),
     Github(String, String, Option<String>),
 }
 
@@ -168,7 +169,18 @@ impl FromStr for RepositoryLocation {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(rest) = s.strip_prefix("github://") {
+        if let Some(rest) = s.strip_prefix("codeberg://") {
+            let (owner, mut repo) = rest.split_once('/')
+                .ok_or(())?;
+            let mut gitref = None;
+
+            if let Some((r, g)) = repo.split_once('/') {
+                repo = r;
+                gitref = Some(g.to_owned());
+            }
+
+            Ok(RepositoryLocation::Codeberg(owner.to_owned(), repo.to_owned(), gitref))
+        } else if let Some(rest) = s.strip_prefix("github://") {
             let (owner, mut repo) = rest.split_once('/')
                 .ok_or(())?;
             let mut branch = None;
@@ -233,6 +245,8 @@ impl Display for RepositoryLocation {
         use RepositoryLocation::*;
         match self {
             Git(url) | Tarball(url) => write!(f, "{}", url),
+            Codeberg(owner, repo, gitref) => write!(f, "codeberg://{}/{}{}", owner, repo,
+                gitref.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
             Github(owner, repo, branch) => write!(f, "github://{}/{}{}", owner, repo,
                 branch.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
         }

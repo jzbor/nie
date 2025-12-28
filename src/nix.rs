@@ -41,6 +41,32 @@ pub fn fetch_tarball(url: &str, args: &BTreeMap<String, String>) -> NieResult<Pa
     }
 }
 
+pub fn fetch_codeberg(owner: &str, repo: &str, gitref: Option<&str>, args: &BTreeMap<String, String>)
+        -> NieResult<PathBuf> {
+    let gitref_arg = if let Some(gitref) = gitref {
+        format!("\"{}\"", gitref)
+    } else {
+        "null".to_owned()
+    };
+
+    let out = exec_output("nix-instantiate", [
+        "--eval",
+        "--raw",
+        "--expr",
+        "--log-format", "bar",
+        include_str!("./nix/fetch_codeberg.nix"),
+        "--arg", "owner", &format!("\"{}\"", owner),
+        "--arg", "repo", &format!("\"{}\"", repo),
+        "--arg", "ref", gitref_arg.as_str(),
+        "--arg", "args", serialize_args(args).as_str(),
+    ])?;
+
+    match out.lines().next() {
+        Some(line) => Ok(PathBuf::from(line)),
+        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
+    }
+}
+
 pub fn fetch_github(owner: &str, repo: &str, branch: Option<&str>, args: &BTreeMap<String, String>)
         -> NieResult<PathBuf> {
     let branch_arg = if let Some(branch) = branch {

@@ -31,7 +31,10 @@ impl Checkout {
         let path = match repository.location() {
             Git(url) => nix::fetch_git(url, repository.checkout_args())?,
             Tarball(url) => nix::fetch_tarball(url, repository.checkout_args())?,
-            Github(owner, repo, branch) => nix::fetch_github(owner, repo, branch.as_ref().map(|s| s.as_str()), repository.checkout_args())?,
+            Codeberg(owner, repo, gitref) => nix::fetch_codeberg(owner, repo,
+                gitref.as_ref().map(|s| s.as_str()), repository.checkout_args())?,
+            Github(owner, repo, branch) => nix::fetch_github(owner, repo,
+                branch.as_ref().map(|s| s.as_str()), repository.checkout_args())?,
         };
 
         let checkout = Checkout(Arc::new(InnerCheckout {

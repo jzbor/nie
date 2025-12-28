@@ -1,0 +1,10 @@
+{ owner, repo, ref, args }:
+
+if ref != null || args ? ref
+then fetchTarball { url = "https://codeberg.org/${owner}/${repo}/archive/${if ref != null then ref else args.ref}.tar.gz"; }
+else fetchGit (
+  {
+    url = "https://codeberg.org/${owner}/${repo}";
+    shallow = true;
+  } // args
+)
