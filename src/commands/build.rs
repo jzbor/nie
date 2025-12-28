@@ -1,6 +1,6 @@
 use crate::error::NieResult;
 use crate::location::NixReference;
-use crate::output::NixOutput;
+use crate::store::output::NixOutput;
 
 
 #[derive(clap::Args)]

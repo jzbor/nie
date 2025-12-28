@@ -3,14 +3,12 @@ use clap::Parser;
 use crate::commands::Command;
 
 
-mod checkout;
 mod commands;
 mod error;
-mod file;
 mod interaction;
 mod location;
+mod store;
 mod nix;
-mod output;
 mod registry;
 
 

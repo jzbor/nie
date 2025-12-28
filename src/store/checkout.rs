@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::error::NieResult;
-use crate::file::NixFile;
 use crate::interaction::announce;
 use crate::location::{RepositoryLocation, RepositoryReference};
+use crate::store::file::NixFile;
 use crate::nix;
 use crate::registry::Registry;
 

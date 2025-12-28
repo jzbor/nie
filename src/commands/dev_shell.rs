@@ -1,5 +1,5 @@
 use crate::error::NieResult;
-use crate::file::NixFile;
+use crate::store::file::NixFile;
 use crate::location::NixReference;
 
 

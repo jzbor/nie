@@ -2,11 +2,11 @@ use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::checkout::Checkout;
 use crate::error::{NieError, NieResult};
 use crate::location::{AttributePath, NixFileReference};
+use crate::store::checkout::Checkout;
+use crate::store::output::NixOutput;
 use crate::nix;
-use crate::output::NixOutput;
 use crate::registry::Registry;
 
 static FILE_REGISTRY: Registry<NixFileReference, NixFile> = Registry::new();
@@ -69,7 +69,7 @@ impl NixFile {
     }
 
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
-        let full_expr = include_str!("./nix/discover.nix");
+        let full_expr = include_str!("../nix/discover.nix");
         let value = nix::exec_output_json("nix-instantiate", [
             "--eval",
             "--raw",

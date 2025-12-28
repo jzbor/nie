@@ -1,9 +1,9 @@
 use crate::error::{NieError, NieResult};
-use crate::file::NixFile;
 use crate::interaction::announce;
 use crate::location::NixReference;
+use crate::store::file::NixFile;
+use crate::store::output::NixOutput;
 use crate::nix;
-use crate::output::NixOutput;
 
 
 #[derive(clap::Args)]

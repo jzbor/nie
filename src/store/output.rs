@@ -2,11 +2,11 @@ use std::iter;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use crate::checkout::Checkout;
 use crate::error::{NieError, NieResult};
-use crate::file::NixFile;
 use crate::interaction::announce;
 use crate::location::{AttributePath, NixReference};
+use crate::store::checkout::Checkout;
+use crate::store::file::NixFile;
 use crate::nix;
 use crate::registry::Registry;
 

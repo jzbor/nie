@@ -2,7 +2,7 @@ use crate::error::NieResult;
 use crate::interaction::announce;
 use crate::location::NixReference;
 use crate::nix;
-use crate::output::NixOutput;
+use crate::store::output::NixOutput;
 
 
 #[derive(clap::Args)]

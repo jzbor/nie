@@ -1,6 +1,6 @@
 use std::iter;
 
-use crate::checkout::Checkout;
+use crate::store::checkout::Checkout;
 use crate::error::NieResult;
 use crate::location::NixReference;
 
