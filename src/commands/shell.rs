@@ -1,3 +1,4 @@
+use crate::attribute_path::AttributePath;
 use crate::error::NieResult;
 use crate::interaction::announce;
 use crate::location::NixReference;
@@ -17,7 +18,8 @@ pub struct ShellCommand {
 
 impl super::Command for ShellCommand {
     fn exec(self) -> NieResult<()> {
-        let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, false, &self.build_args,&[])?
+        let default = AttributePath::default_packages();
+        let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, &default, false, &self.build_args, &[])?
             .into_iter()
             .flatten()
             .collect();

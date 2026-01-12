@@ -1,4 +1,5 @@
 use crate::BuildArgs;
+use crate::attribute_path::AttributePath;
 use crate::error::NieResult;
 use crate::location::NixReference;
 use crate::store::output::NixOutput;
@@ -20,7 +21,8 @@ pub struct BuildCommand {
 
 impl super::Command for BuildCommand {
     fn exec(self) -> NieResult<()> {
-        let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, true, &self.build_args, &self.extra_args)?
+        let default = AttributePath::default_packages();
+        let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, &default, true, &self.build_args, &self.extra_args)?
             .into_iter()
             .flatten()
             .collect();

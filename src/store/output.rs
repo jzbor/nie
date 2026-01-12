@@ -2,9 +2,10 @@ use std::iter;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
+use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 use crate::interaction::announce;
-use crate::location::{AttributePath, NixReference};
+use crate::location::NixReference;
 use crate::store::checkout::Checkout;
 use crate::store::file::NixFile;
 use crate::{BuildArgs, nix};
@@ -46,22 +47,35 @@ impl NixOutput {
         Ok(output)
     }
 
-    pub fn fetch_and_build(reference: &NixReference, out_links: bool, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+    pub fn fetch_and_build(reference: &NixReference, default_attrs: &[AttributePath], out_links: bool,
+            build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
         let checkout = Checkout::create(reference.repository().clone())?;
         let file = checkout.file(reference.filename().cloned(), build_args.flake_compat)?;
-        let output = file.output(reference.attribute().clone())?;
+        let output = file.output(reference.attribute().clone(), default_attrs)?;
         output.build(out_links, build_args, extra_args)
+            .and_then(|p| if p.is_empty() {
+                Err(NieError::NoOutputPath(output.reference().into()))
+            } else {
+                Ok(p)
+            })
     }
 
-    pub fn fetch_and_build_all(refs: &[NixReference], out_links: bool, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
+    pub fn fetch_and_build_all(refs: &[NixReference], default_attrs: &[AttributePath], out_links: bool,
+            build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
         let repo_refs = refs.iter().map(|s| s.repository()).cloned();
         let filenames = refs.iter().map(|s| s.filename().cloned());
         let attributes = refs.iter().map(|s| s.attribute()).cloned();
         let checkouts = Checkout::create_all(repo_refs)?;
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), build_args.flake_compat)?;
-        let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes))?;
+        let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), default_attrs)?;
         outputs.into_iter()
-            .map(|o| o.build(out_links, build_args, extra_args))
+            .map(|o| o.build(out_links, build_args, extra_args)
+                .and_then(|p| if p.is_empty() {
+                    Err(NieError::NoOutputPath(o.reference().into()))
+                } else {
+                    Ok(p)
+                })
+            )
             .collect::<NieResult<Vec<_>>>()
     }
 

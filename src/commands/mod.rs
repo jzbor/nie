@@ -3,7 +3,7 @@ use crate::error::NieResult;
 pub mod aliases;
 pub mod build;
 pub mod completions;
-pub mod dev_shell;
+pub mod develop;
 pub mod man;
 pub mod run;
 pub mod shell;

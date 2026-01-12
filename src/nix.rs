@@ -4,8 +4,9 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{self, Stdio};
 
+use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::location::AttributePath;
+
 
 pub fn fetch_git(url: &str, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
     let out = exec_output("nix-instantiate", [
@@ -206,6 +207,15 @@ pub fn shell(paths: &[PathBuf], nix_options: &[(&str, &str)]) -> NieResult<()> {
     exec("nix-shell", &args)
 }
 
+pub fn current_system() -> NieResult<String> {
+    exec_output("nix-instantiate", [
+        "--eval",
+        "--raw",
+        "-E",
+        "builtins.currentSystem",
+    ])
+}
+
 pub fn dev_shell(path: &Path, attribute: &AttributePath, extra_args: &[String]) -> NieResult<()> {
     let mut args = vec![
         path.to_string_lossy().to_string(),
@@ -254,7 +264,8 @@ pub fn exec(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Nie
         .status()?;
 
     if !status.success() {
-        Err(NieError::ExternalCommand(cmd.to_owned()))
+        let code = status.code().unwrap_or(1);
+        Err(NieError::ExternalCommand(cmd.to_owned(), code))
     } else {
         Ok(())
     }
@@ -269,7 +280,8 @@ pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) 
         .status()?;
 
     if !status.success() {
-        Err(NieError::ExternalCommand(cmd.to_owned()))
+        let code = status.code().unwrap_or(1);
+        Err(NieError::ExternalCommand(cmd.to_owned(), code))
     } else {
         Ok(())
     }
@@ -283,7 +295,8 @@ pub fn exec_output(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>)
         .output()?;
 
     if !output.status.success() {
-        Err(NieError::ExternalCommand(cmd.to_owned()))
+        let code = output.status.code().unwrap_or(1);
+        Err(NieError::ExternalCommand(cmd.to_owned(), code))
     } else {
         Ok(String::from_utf8_lossy(&output.stdout).into())
     }
@@ -297,7 +310,8 @@ pub fn exec_output_json(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsS
         .output()?;
 
     if !output.status.success() {
-        Err(NieError::ExternalCommand(cmd.to_owned()))
+        let code = output.status.code().unwrap_or(1);
+        Err(NieError::ExternalCommand(cmd.to_owned(), code))
     } else {
         let value = serde_json::from_str(String::from_utf8_lossy(&output.stdout).as_ref())?;
         Ok(value)

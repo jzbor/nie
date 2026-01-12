@@ -1,8 +1,10 @@
+use std::process;
+
+use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 use crate::interaction::announce;
 use crate::location::NixReference;
 use crate::store::file::NixFile;
-use crate::store::output::NixOutput;
 use crate::{BuildArgs, nix};
 
 
@@ -17,16 +19,21 @@ pub struct RunCommand {
     args: Vec<String>,
 }
 
+
 impl super::Command for RunCommand {
     fn exec(self) -> NieResult<()> {
+        let default = AttributePath::default_packages();
         let file = NixFile::fetch(self.reference.file(), false)?;
-        let output = file.output(self.reference.attribute().clone())?;
-        let paths: Vec<_> = NixOutput::fetch_and_build(&self.reference, false, &BuildArgs::default(), &[])?;
+        let output = file.output(self.reference.attribute().clone(), &default)?;
+        let paths = output.build(false, &BuildArgs::default(), &[])?;
         let path = paths.first().ok_or(NieError::NoOutputPath(Box::new(self.reference)))?;
         let name = output.drv_name()?;
         let bin_path = path.join("bin").join(name);
 
         announce(&format!("Executing {}", bin_path.to_string_lossy()));
-        nix::exec(bin_path.to_string_lossy().to_string().as_str(), self.args)
+        match nix::exec(bin_path.to_string_lossy().to_string().as_str(), self.args) {
+            Err(NieError::ExternalCommand(_, code)) => process::exit(code),
+            other => other,
+        }
     }
 }

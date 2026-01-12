@@ -3,7 +3,8 @@ use std::{io, process};
 
 use colored::Colorize;
 
-use crate::location::{AttributePath, NixReference};
+use crate::attribute_path::AttributePath;
+use crate::location::NixReference;
 
 pub type NieResult<T> = Result<T, NieError>;
 
@@ -19,7 +20,7 @@ pub enum NieError {
     Man(String),
 
     #[error("External command failed ({0})")]
-    ExternalCommand(String),
+    ExternalCommand(String, i32),
 
     #[error("Missing data from Nix evaluation ({0})")]
     MissingNixData(String),
@@ -39,7 +40,7 @@ pub enum NieError {
     #[error("\"{0}\" should have been built, but does not exist (anymore)")]
     BuiltPathMissing(String),
 
-    #[error("Expected built output path from \"{0}\"")]
+    #[error("No output paths found for \"{0}\"")]
     NoOutputPath(Box<NixReference>),
 
     #[error("Invalid location specification \"{0}\"")]

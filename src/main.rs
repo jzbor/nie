@@ -3,6 +3,7 @@ use clap::Parser;
 use crate::commands::Command;
 
 
+mod attribute_path;
 mod commands;
 mod error;
 mod interaction;
@@ -33,8 +34,8 @@ enum Subcommand {
     Build(commands::build::BuildCommand),
 
     /// Enter a dev shell from a Nix repo
-    #[command(alias = "develop")]
-    DevShell(commands::dev_shell::DevShellCommand),
+    #[command(alias = "dev", alias = "dev-shell")]
+    Develop(commands::develop::DevelopCommand),
 
     /// Generate man pages
     #[command(hide = true)]
@@ -79,7 +80,7 @@ fn main() {
         Aliases(cmd) => cmd.exec(),
         Build(cmd) => cmd.exec(),
         Completions(cmd) => cmd.exec(),
-        DevShell(cmd) => cmd.exec(),
+        Develop(cmd) => cmd.exec(),
         Man(cmd) => cmd.exec(),
         Run(cmd) => cmd.exec(),
         Shell(cmd) => cmd.exec(),

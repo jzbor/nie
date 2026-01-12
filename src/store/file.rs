@@ -3,8 +3,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::location::{AttributePath, NixFileReference};
+use crate::location::NixFileReference;
 use crate::store::checkout::Checkout;
 use crate::store::output::NixOutput;
 use crate::nix;
@@ -71,18 +72,32 @@ impl NixFile {
         checkout.file(reference.filename().cloned(), force_flake_compat)
     }
 
-    pub fn output(&self, attr: AttributePath) -> NieResult<NixOutput> {
+    pub fn output(&self, mut attr: AttributePath, default_attrs: &[AttributePath]) -> NieResult<NixOutput> {
+        if attr == AttributePath::default() {
+            for d in default_attrs {
+                if self.has_attribute(d).unwrap_or_default() {
+                    attr = d.to_owned();
+                    break
+                }
+            }
+        }
+
         NixOutput::new(self.clone(), attr)
     }
 
-    pub fn outputs(files: impl IntoIterator<Item = (Self, AttributePath)>) -> NieResult<Vec<NixOutput>> {
+    pub fn outputs(files: impl IntoIterator<Item = (Self, AttributePath)>, default_attrs: &[AttributePath])
+            -> NieResult<Vec<NixOutput>> {
         files.into_iter()
-            .map(|(f, a)| f.output(a.clone()))
+            .map(|(f, a)| f.output(a.clone(), default_attrs))
             .collect()
     }
 
     pub fn reference(&self) -> NixFileReference {
         self.0.checkout.repository().with_file(self.0.filename.clone())
+    }
+
+    pub fn has_attribute(&self, attr: &AttributePath) -> NieResult<bool> {
+        nix::has_attribute(&self.path(), attr)
     }
 
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
