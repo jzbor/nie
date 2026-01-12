@@ -3,25 +3,25 @@ use crate::interaction::announce;
 use crate::location::NixReference;
 use crate::store::file::NixFile;
 use crate::store::output::NixOutput;
-use crate::nix;
+use crate::{BuildArgs, nix};
 
 
 #[derive(clap::Args)]
 pub struct RunCommand {
     /// Nix references to fetch and add to shell
-    #[clap(default_value = "./.")]
+    #[arg(default_value = "./.")]
     reference: NixReference,
 
     /// Arguments passed to command
-    #[clap(last = true)]
+    #[arg(last = true)]
     args: Vec<String>,
 }
 
 impl super::Command for RunCommand {
     fn exec(self) -> NieResult<()> {
-        let file = NixFile::fetch(self.reference.file())?;
+        let file = NixFile::fetch(self.reference.file(), false)?;
         let output = file.output(self.reference.attribute().clone())?;
-        let paths: Vec<_> = NixOutput::fetch_and_build(&self.reference, false, &[])?;
+        let paths: Vec<_> = NixOutput::fetch_and_build(&self.reference, false, &BuildArgs::default(), &[])?;
         let path = paths.first().ok_or(NieError::NoOutputPath(Box::new(self.reference)))?;
         let name = output.drv_name()?;
         let bin_path = path.join("bin").join(name);

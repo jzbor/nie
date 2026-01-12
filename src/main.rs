@@ -26,18 +26,18 @@ enum Subcommand {
     Aliases(commands::aliases::AliasesCommand),
 
     /// Generate shell completions
-    #[clap(hide = true)]
+    #[command(hide = true)]
     Completions(commands::completions::CompletionsCommand),
 
     /// Build a package from a Nix repo
     Build(commands::build::BuildCommand),
 
     /// Enter a dev shell from a Nix repo
-    #[clap(alias = "develop")]
+    #[command(alias = "develop")]
     DevShell(commands::dev_shell::DevShellCommand),
 
     /// Generate man pages
-    #[clap(hide = true)]
+    #[command(hide = true)]
     Man(commands::man::ManCommand),
 
     /// Run an executable from a Nix repo
@@ -48,6 +48,26 @@ enum Subcommand {
 
     /// Show outputs of a package
     Show(commands::show::ShowCommand),
+}
+
+#[derive(Debug, Default, clap::Args)]
+struct BuildArgs {
+    /// Enable Flake compatibility
+    #[arg(short, long)]
+    flake_compat: bool,
+
+    /// Additional options for the nix builder (see nix-build(1))
+    #[arg(long("nix-option"), num_args = 2)]
+    nix_options: Vec<Vec<String>>,
+}
+
+impl BuildArgs {
+    fn nix_options(&self) -> Vec<(&str, &str)> {
+        self.nix_options.iter()
+            .flat_map(|v| v.as_chunks::<2>().0.first())
+            .map(|s| (s[0].as_str(), s[1].as_str()))
+            .collect()
+    }
 }
 
 fn main() {

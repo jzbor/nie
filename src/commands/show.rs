@@ -8,14 +8,17 @@ use crate::location::NixReference;
 #[derive(clap::Args)]
 pub struct ShowCommand {
     /// Nix references to fetch and show
-    #[clap(default_value = "./.")]
+    #[arg(default_value = "./.")]
     refs: Vec<NixReference>,
 
-    #[clap(short, long, default_value_t = 5)]
+    #[arg(short, long, default_value_t = 5)]
     depth: u32,
 
-    #[clap(short, long)]
+    #[arg(short, long)]
     reject_broken: bool,
+
+    #[arg(short, long)]
+    flake_compat: bool,
 }
 
 impl super::Command for ShowCommand {
@@ -23,7 +26,7 @@ impl super::Command for ShowCommand {
         let repo_refs = self.refs.iter().map(|s| s.repository()).cloned();
         let filenames = self.refs.iter().map(|s| s.filename().cloned());
         let checkouts = Checkout::create_all(repo_refs)?;
-        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames))?;
+        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), self.flake_compat)?;
 
         println!();
 

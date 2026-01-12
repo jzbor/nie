@@ -7,7 +7,7 @@ use crate::interaction::announce;
 use crate::location::{AttributePath, NixReference};
 use crate::store::checkout::Checkout;
 use crate::store::file::NixFile;
-use crate::nix;
+use crate::{BuildArgs, nix};
 use crate::registry::Registry;
 
 
@@ -25,15 +25,16 @@ struct InnerNixOutput {
 
 impl NixOutput {
     pub fn new(file: NixFile, attr: AttributePath) -> NieResult<Self> {
-        let key = file.reference().with_attribute(attr.clone());
+        let key= file.reference().with_attribute(attr.clone());
         if let Some(file) = OUTPUT_REGISTRY.lookup(&key) {
             return Ok(file);
         }
 
-        if !attr.is_toplevel() && !nix::has_attribute(&file.path(), &attr)? {
+        // TODO check attributes also for flake_compat
+        if !attr.is_toplevel() && !file.flake_compat()
+                && !nix::has_attribute(&file.path(), &attr)? {
             return Err(NieError::AttributeNotFound(file.path().to_string_lossy().to_string(), attr))
         }
-
 
         let output = NixOutput(Arc::new(RwLock::new(InnerNixOutput {
             file, attr,
@@ -45,22 +46,22 @@ impl NixOutput {
         Ok(output)
     }
 
-    pub fn fetch_and_build(reference: &NixReference, out_links: bool, nix_args: &[String]) -> NieResult<Vec<PathBuf>> {
+    pub fn fetch_and_build(reference: &NixReference, out_links: bool, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
         let checkout = Checkout::create(reference.repository().clone())?;
-        let file = checkout.file(reference.filename().cloned())?;
+        let file = checkout.file(reference.filename().cloned(), build_args.flake_compat)?;
         let output = file.output(reference.attribute().clone())?;
-        output.build(out_links, nix_args)
+        output.build(out_links, build_args, extra_args)
     }
 
-    pub fn fetch_and_build_all(refs: &[NixReference], out_links: bool, nix_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
+    pub fn fetch_and_build_all(refs: &[NixReference], out_links: bool, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
         let repo_refs = refs.iter().map(|s| s.repository()).cloned();
         let filenames = refs.iter().map(|s| s.filename().cloned());
         let attributes = refs.iter().map(|s| s.attribute()).cloned();
         let checkouts = Checkout::create_all(repo_refs)?;
-        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames))?;
+        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), build_args.flake_compat)?;
         let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes))?;
         outputs.into_iter()
-            .map(|o| o.build(out_links, nix_args))
+            .map(|o| o.build(out_links, build_args, extra_args))
             .collect::<NieResult<Vec<_>>>()
     }
 
@@ -73,7 +74,7 @@ impl NixOutput {
     }
 
     pub fn drv_name(&self) -> NieResult<String> {
-        let paths = self.build(false, &[])?;
+        let paths = self.build(false, &BuildArgs::default(), &[])?;
         let path = paths.first()
             .ok_or(NieError::NoOutputPath(Box::new(self.reference())))?;
 
@@ -93,18 +94,24 @@ impl NixOutput {
         self.file().reference().with_attribute(self.attr())
     }
 
-    pub fn build(&self, out_links: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+    pub fn build(&self, out_links: bool, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
         let attr = self.attr().clone();
         let path = self.file().path();
 
+
         if let Some(paths) = &self.0.read().unwrap().built_paths {
-            Ok(paths.clone())
+            return Ok(paths.clone())
+        }
+
+        let paths = if self.file().flake_compat() {
+            announce(&format!("Building {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
+            nix::build_flake(&path, &attr, out_links, &build_args.nix_options(), extra_args)?
         } else {
             announce(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
-            let paths = nix::build(&path, &attr, out_links, extra_args)?;
-            self.0.write().unwrap().built_paths = Some(paths.clone());
-            Ok(paths)
-        }
+            nix::build(&path, &attr, out_links, &build_args.nix_options(), extra_args)?
+        };
+        self.0.write().unwrap().built_paths = Some(paths.clone());
+        Ok(paths)
     }
 
     pub fn enter_dev_shell(&self, extra_args: &[String]) -> NieResult<()> {

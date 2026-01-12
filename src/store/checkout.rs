@@ -53,13 +53,14 @@ impl Checkout {
             .collect()
     }
 
-    pub fn file(&self, filename: Option<PathBuf>) -> NieResult<NixFile> {
-        NixFile::new(self.clone(), filename)
+    pub fn file(&self, filename: Option<PathBuf>, force_flake_compat: bool) -> NieResult<NixFile> {
+        NixFile::new(self.clone(), filename, force_flake_compat)
     }
 
-    pub fn files(files: impl IntoIterator<Item = (Self, Option<PathBuf>)>) -> NieResult<Vec<NixFile>> {
+    pub fn files(files: impl IntoIterator<Item = (Self, Option<PathBuf>)>, force_flake_compat: bool)
+            -> NieResult<Vec<NixFile>> {
         files.into_iter()
-            .map(|(c, f)| c.file(f.clone()))
+            .map(|(c, f)| c.file(f.clone(), force_flake_compat))
             .collect()
     }
 

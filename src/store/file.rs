@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -9,7 +10,7 @@ use crate::store::output::NixOutput;
 use crate::nix;
 use crate::registry::Registry;
 
-static FILE_REGISTRY: Registry<NixFileReference, NixFile> = Registry::new();
+static FILE_REGISTRY: Registry<(NixFileReference, bool), NixFile> = Registry::new();
 
 #[derive(Clone)]
 pub struct NixFile(Arc<InnerNixFile>);
@@ -17,6 +18,7 @@ pub struct NixFile(Arc<InnerNixFile>);
 struct InnerNixFile {
     checkout: Checkout,
     filename: Option<PathBuf>,
+    flake_compat: bool,
 }
 
 pub struct AttributeIterator<'a> {
@@ -26,15 +28,26 @@ pub struct AttributeIterator<'a> {
 
 
 impl NixFile {
-    pub fn new(checkout: Checkout, filename: Option<PathBuf>) -> NieResult<Self> {
-        let key = checkout.repository().with_file(filename.clone());
+    pub fn new(checkout: Checkout, filename: Option<PathBuf>, force_flake_compat: bool) -> NieResult<Self> {
+        let key = (checkout.repository().with_file(filename.clone()), force_flake_compat);
         if let Some(file) = FILE_REGISTRY.lookup(&key) {
             return Ok(file);
         }
 
+        let checkout_dir = checkout.path();
+        let expected_file = match &filename {
+            Some(filename) => checkout.path().join(filename),
+            None => checkout_dir.join("default.nix"),
+        };
+        let requires_flake_compat = fs::exists(checkout_dir.join("flake.nix"))?
+            && !fs::exists(expected_file)?;
+        let flake_compat = requires_flake_compat || force_flake_compat;
+
+
         let file = NixFile(Arc::new(InnerNixFile {
             checkout,
             filename,
+            flake_compat,
         }));
 
         if !file.path().exists() {
@@ -49,9 +62,13 @@ impl NixFile {
         Ok(file)
     }
 
-    pub fn fetch(reference: &NixFileReference) -> NieResult<Self> {
+    pub fn flake_compat(&self) -> bool {
+        self.0.flake_compat
+    }
+
+    pub fn fetch(reference: &NixFileReference, force_flake_compat: bool) -> NieResult<Self> {
         let checkout = Checkout::create(reference.repository().clone())?;
-        checkout.file(reference.filename().cloned())
+        checkout.file(reference.filename().cloned(), force_flake_compat)
     }
 
     pub fn output(&self, attr: AttributePath) -> NieResult<NixOutput> {
@@ -69,7 +86,12 @@ impl NixFile {
     }
 
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
-        let full_expr = include_str!("../nix/discover.nix");
+        let full_expr = if self.flake_compat() {
+            include_str!("../nix/discover_flake.nix")
+        } else {
+            include_str!("../nix/discover.nix")
+        };
+
         let value = nix::exec_output_json("nix-instantiate", [
             "--eval",
             "--raw",
@@ -78,7 +100,11 @@ impl NixFile {
             "--arg", "maxdepth", depth.to_string().as_str(),
         ])?;
 
-        let attributes = Self::unfold_attributes(vec!(), AttributePath::default(), value, reject_broken)?.into();
+        let attributes = if self.flake_compat() {
+            Self::unfold_attributes_flake(vec!(), value, reject_broken)?.into()
+        } else {
+            Self::unfold_attributes(vec!(), AttributePath::default(), value, reject_broken)?.into()
+        };
 
         Ok(AttributeIterator {
             _file: self,
@@ -106,6 +132,33 @@ impl NixFile {
         }
 
         Ok(acc)
+    }
+
+    fn unfold_attributes_flake(mut acc: Vec<AttributePath>,
+            value: serde_json::Value, reject_broken: bool) -> NieResult<Vec<AttributePath>> {
+        use serde_json::Value::*;
+        if let Array(arr) = &value {
+            for elem in arr {
+                if let Object(map) = elem {
+                    let name = match map.get("name") {
+                        Some(String(name)) => name,
+                        _ => return Err(NieError::JsonUnfolding(value)),
+                    };
+                    let value = match map.get("value") {
+                        Some(value) => value,
+                        None => return Err(NieError::JsonUnfolding(value)),
+                    };
+                    let new = AttributePath::default().child(name.to_string());
+                    acc.push(new.clone());
+                    acc = Self::unfold_attributes(acc, new, value.clone(), reject_broken)?;
+                } else {
+                    return Err(NieError::JsonUnfolding(value))
+                }
+            }
+            Ok(acc)
+        } else {
+            Err(NieError::JsonUnfolding(value))
+        }
     }
 
     pub fn path(&self) -> PathBuf {

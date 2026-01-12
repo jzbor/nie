@@ -1,4 +1,4 @@
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::str::FromStr;
 
@@ -10,19 +10,19 @@ use crate::location::NixReference;
 #[derive(clap::Args)]
 pub struct AliasesCommand {
     /// Add a new alias for the user
-    #[clap(long, exclusive = true, num_args = 2)]
+    #[arg(long, exclusive = true, num_args = 2)]
     add: Option<Vec<String>>,
 
     /// Query for an existing alias
-    #[clap(short, long, exclusive = true)]
+    #[arg(short, long, exclusive = true)]
     query: Option<String>,
 
     /// List all considered files containing aliases
-    #[clap(long, exclusive = true)]
+    #[arg(long, exclusive = true)]
     files: bool,
 
     /// Arguments passed to command
-    #[clap(last = true)]
+    #[arg(last = true)]
     args: Vec<String>,
 }
 

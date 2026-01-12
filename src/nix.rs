@@ -112,22 +112,31 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
     Ok(found)
 }
 
-pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+    let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
-        path.to_string_lossy().to_string(),
-        "--log-format".to_owned(), "bar".to_owned(),
+        &path_str,
+        "--log-format", "bar",
     ];
 
+    let attribute_str = attribute.to_string();
     if !attribute.is_toplevel() {
-        args.push("-A".to_owned());
-        args.push(attribute.to_string());
+        args.push("-A");
+        args.push(&attribute_str);
     }
 
     if !out_links {
-        args.push("--no-out-link".to_owned());
+        args.push("--no-out-link");
     }
 
-    args.extend_from_slice(extra_args);
+    for (k, v) in nix_options {
+        args.push("--option");
+        args.push(k);
+        args.push(v);
+    }
+
+    args.extend(extra_args.iter().map(|s| s.as_str()));
+
     let out = exec_output("nix-build", &args)?;
     out.lines()
         .map(PathBuf::from)
@@ -138,7 +147,44 @@ pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, extra_args
         }).collect()
 }
 
-pub fn shell(paths: &[PathBuf], extra_args: &[String]) -> NieResult<()> {
+pub fn build_flake(path: &Path, attribute: &AttributePath, out_links: bool, nix_options: &[(&str, &str)], extra_args: &[String])
+        -> NieResult<Vec<PathBuf>> {
+    let path_str = path.to_string_lossy().to_string();
+    let mut args = vec![
+        "--expr", include_str!("./nix/compat.nix"),
+        "--arg", "path", &path_str,
+        "--log-format", "bar",
+    ];
+
+    let attribute_str = attribute.to_string();
+    if !attribute.is_toplevel() {
+        args.push("-A");
+        args.push(&attribute_str);
+    }
+
+    if !out_links {
+        args.push("--no-out-link");
+    }
+
+    for (k, v) in nix_options {
+        args.push("--option");
+        args.push(k);
+        args.push(v);
+    }
+
+    args.extend(extra_args.iter().map(|s| s.as_str()));
+
+    let out = exec_output("nix-build", &args)?;
+    out.lines()
+        .map(PathBuf::from)
+        .map(|p| if p.exists() {
+            Ok(p)
+        } else {
+            Err(NieError::BuiltPathMissing(p.to_string_lossy().into()))
+        }).collect()
+}
+
+pub fn shell(paths: &[PathBuf], nix_options: &[(&str, &str)]) -> NieResult<()> {
     let mut args = vec!();
 
     for path in paths {
@@ -151,7 +197,12 @@ pub fn shell(paths: &[PathBuf], extra_args: &[String]) -> NieResult<()> {
         args.push(shell);
     }
 
-    args.extend_from_slice(extra_args);
+    for (k, v) in nix_options {
+        args.push("--option".to_owned());
+        args.push((*k).to_owned());
+        args.push((*v).to_owned());
+    }
+
     exec("nix-shell", &args)
 }
 
