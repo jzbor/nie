@@ -54,6 +54,9 @@ pub enum NieError {
 
     #[error("Directory already exists: {0}")]
     DirectoryAlreadyExists(String),
+
+    #[error("Program not found: {0}")]
+    ProgramNotFound(Box<NixReference>),
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {
