@@ -5,6 +5,7 @@ pub mod build;
 pub mod completions;
 pub mod develop;
 pub mod evaluate;
+pub mod init;
 pub mod man;
 pub mod run;
 pub mod shell;

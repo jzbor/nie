@@ -42,6 +42,20 @@ impl AttributePath {
         }
     }
 
+    pub fn common_template_locations() -> Vec<AttributePath> {
+        let mut pkgs = vec![
+            AttributePath::from("templates"),
+        ];
+
+        if let Ok(system) = nix::current_system() {
+            pkgs.push(AttributePath::from(format!("templates.{}", system).as_str()));
+        }
+
+        pkgs.push(AttributePath::default());
+
+        pkgs
+    }
+
     pub fn common_package_locations() -> Vec<AttributePath> {
         let mut pkgs = vec![
             AttributePath::from("packages"),

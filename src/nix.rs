@@ -103,7 +103,6 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
 
     let found = exec_quiet("nix-instantiate", [
         "--eval",
-        "--raw",
         "--expr",
         "--log-format", "bar",
         &format!("{{ file, }}: (import file {{}}).{}", attr),
@@ -124,7 +123,6 @@ pub fn has_attribute_flake(file: &Path, attr: &AttributePath) -> NieResult<bool>
 
     let found = exec_quiet("nix-instantiate", [
         "--eval",
-        "--raw",
         "--expr",
         "--log-format", "bar",
         &format!("{{ path, }}: (({}) {{ inherit path; }}).{}", compat, attr),
@@ -134,7 +132,7 @@ pub fn has_attribute_flake(file: &Path, attr: &AttributePath) -> NieResult<bool>
     Ok(found)
 }
 
-pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, flake_compat: bool,
+pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, flake_compat: bool,
         nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
@@ -158,7 +156,7 @@ pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, flake_comp
         args.push(&attribute_str);
     }
 
-    if !out_links {
+    if !allow_out_links {
         args.push("--no-out-link");
     }
 
