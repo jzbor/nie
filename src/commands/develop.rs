@@ -18,7 +18,7 @@ pub struct DevelopCommand {
 impl super::Command for DevelopCommand {
     fn exec(self) -> NieResult<()> {
         let file = NixFile::fetch(self.reference.file(), false)?;
-        let output = file.output(self.reference.attribute().clone(), &AttributePath::default_dev_shells())?;
+        let output = file.output(self.reference.attribute().clone(), &AttributePath::common_dev_shell_locations())?;
         output.enter_dev_shell(&self.extra_args)
     }
 }

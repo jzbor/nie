@@ -21,7 +21,7 @@ pub struct BuildCommand {
 
 impl super::Command for BuildCommand {
     fn exec(self) -> NieResult<()> {
-        let default = AttributePath::default_packages();
+        let default = AttributePath::common_package_locations();
         let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, &default, true, &self.build_args, &self.extra_args)?
             .into_iter()
             .flatten()

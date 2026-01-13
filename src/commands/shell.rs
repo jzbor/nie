@@ -18,7 +18,7 @@ pub struct ShellCommand {
 
 impl super::Command for ShellCommand {
     fn exec(self) -> NieResult<()> {
-        let default = AttributePath::default_packages();
+        let default = AttributePath::common_package_locations();
         let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, &default, false, &self.build_args, &[])?
             .into_iter()
             .flatten()

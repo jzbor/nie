@@ -72,10 +72,17 @@ impl NixFile {
         checkout.file(reference.filename().cloned(), force_flake_compat)
     }
 
-    pub fn output(&self, mut attr: AttributePath, default_attrs: &[AttributePath]) -> NieResult<NixOutput> {
+    pub fn output(&self, mut attr: AttributePath, common_locations: &[AttributePath]) -> NieResult<NixOutput> {
         if attr == AttributePath::default() {
-            for d in default_attrs {
-                if self.has_attribute(d).unwrap_or_default() {
+            for d in common_locations.into_iter().map(|l| l.child("default".to_owned())) {
+                if self.has_attribute(&d).unwrap_or_default() {
+                    attr = d.to_owned();
+                    break
+                }
+            }
+        } else if !self.has_attribute(&attr).unwrap_or(true) {
+            for d in common_locations.into_iter().map(|l| l.join(&attr)) {
+                if self.has_attribute(&d).unwrap_or_default() {
                     attr = d.to_owned();
                     break
                 }
@@ -85,10 +92,10 @@ impl NixFile {
         NixOutput::new(self.clone(), attr)
     }
 
-    pub fn outputs(files: impl IntoIterator<Item = (Self, AttributePath)>, default_attrs: &[AttributePath])
+    pub fn outputs(files: impl IntoIterator<Item = (Self, AttributePath)>, common_locations: &[AttributePath])
             -> NieResult<Vec<NixOutput>> {
         files.into_iter()
-            .map(|(f, a)| f.output(a.clone(), default_attrs))
+            .map(|(f, a)| f.output(a.clone(), common_locations))
             .collect()
     }
 

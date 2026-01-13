@@ -22,7 +22,7 @@ pub struct RunCommand {
 
 impl super::Command for RunCommand {
     fn exec(self) -> NieResult<()> {
-        let default = AttributePath::default_packages();
+        let default = AttributePath::common_package_locations();
         let file = NixFile::fetch(self.reference.file(), false)?;
         let output = file.output(self.reference.attribute().clone(), &default)?;
         let paths = output.build(false, &BuildArgs::default(), &[])?;

@@ -47,11 +47,11 @@ impl NixOutput {
         Ok(output)
     }
 
-    pub fn fetch_and_build(reference: &NixReference, default_attrs: &[AttributePath], out_links: bool,
+    pub fn fetch_and_build(reference: &NixReference, common_locations: &[AttributePath], out_links: bool,
             build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
         let checkout = Checkout::create(reference.repository().clone())?;
         let file = checkout.file(reference.filename().cloned(), build_args.flake_compat)?;
-        let output = file.output(reference.attribute().clone(), default_attrs)?;
+        let output = file.output(reference.attribute().clone(), common_locations)?;
         output.build(out_links, build_args, extra_args)
             .and_then(|p| if p.is_empty() {
                 Err(NieError::NoOutputPath(output.reference().into()))
@@ -60,14 +60,14 @@ impl NixOutput {
             })
     }
 
-    pub fn fetch_and_build_all(refs: &[NixReference], default_attrs: &[AttributePath], out_links: bool,
+    pub fn fetch_and_build_all(refs: &[NixReference], common_locations: &[AttributePath], out_links: bool,
             build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
         let repo_refs = refs.iter().map(|s| s.repository()).cloned();
         let filenames = refs.iter().map(|s| s.filename().cloned());
         let attributes = refs.iter().map(|s| s.attribute()).cloned();
         let checkouts = Checkout::create_all(repo_refs)?;
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), build_args.flake_compat)?;
-        let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), default_attrs)?;
+        let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), common_locations)?;
         outputs.into_iter()
             .map(|o| o.build(out_links, build_args, extra_args)
                 .and_then(|p| if p.is_empty() {

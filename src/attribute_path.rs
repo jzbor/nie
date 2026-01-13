@@ -16,6 +16,12 @@ impl AttributePath {
         AttributePath(new_path)
     }
 
+    pub fn join(&self, other: &Self) -> Self {
+        let mut new_path = self.0.clone();
+        new_path.extend(other.0.clone());
+        AttributePath(new_path)
+    }
+
     pub fn depth(&self) -> usize {
         self.len() - 1
     }
@@ -36,28 +42,31 @@ impl AttributePath {
         }
     }
 
-    pub fn default_packages() -> Vec<AttributePath> {
+    pub fn common_package_locations() -> Vec<AttributePath> {
         let mut pkgs = vec![
-            AttributePath::from("packages.default"),
-            AttributePath::from("default"),
+            AttributePath::from("packages"),
         ];
 
         if let Ok(system) = nix::current_system() {
-            pkgs.push(AttributePath::from(format!("packages.{}.default", system).as_str()));
+            pkgs.push(AttributePath::from(format!("packages.{}", system).as_str()));
         }
+
+        pkgs.push(AttributePath::default());
 
         pkgs
     }
 
-    pub fn default_dev_shells() -> Vec<AttributePath> {
+    pub fn common_dev_shell_locations() -> Vec<AttributePath> {
         let mut pkgs = vec![
-            AttributePath::from("devShells.default"),
-            AttributePath::from("default"),
+            AttributePath::from("devShells"),
         ];
 
         if let Ok(system) = nix::current_system() {
-            pkgs.push(AttributePath::from(format!("devShells.{}.default", system).as_str()));
+            pkgs.push(AttributePath::from(format!("devShells.{}", system).as_str()));
         }
+
+        pkgs.push(AttributePath::default());
+
 
         pkgs
     }
