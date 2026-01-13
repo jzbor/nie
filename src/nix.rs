@@ -134,12 +134,23 @@ pub fn has_attribute_flake(file: &Path, attr: &AttributePath) -> NieResult<bool>
     Ok(found)
 }
 
-pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, flake_compat: bool,
+        nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
-        &path_str,
         "--log-format", "bar",
     ];
+
+    if flake_compat {
+        args.push("--expr");
+        args.push(include_str!("./nix/compat.nix"));
+
+        args.push("--arg");
+        args.push("path");
+        args.push(path_str.as_str());
+    } else {
+        args.push(path_str.as_str());
+    }
 
     let attribute_str = attribute.to_string();
     if !attribute.is_toplevel() {
@@ -169,23 +180,26 @@ pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, nix_option
         }).collect()
 }
 
-pub fn build_flake(path: &Path, attribute: &AttributePath, out_links: bool, nix_options: &[(&str, &str)], extra_args: &[String])
-        -> NieResult<Vec<PathBuf>> {
+pub fn eval(path: &Path, attribute: &AttributePath, flake_compat: bool, nix_options: &[(&str, &str)],
+        extra_args: &[String]) -> NieResult<String> {
     let path_str = path.to_string_lossy().to_string();
-    let mut args = vec![
-        "--expr", include_str!("./nix/compat.nix"),
-        "--arg", "path", &path_str,
-        "--log-format", "bar",
-    ];
+    let mut args = vec!("--eval");
+
+    if flake_compat {
+        args.push("--expr");
+        args.push(include_str!("./nix/compat.nix"));
+
+        args.push("--arg");
+        args.push("path");
+        args.push(path_str.as_str());
+    } else {
+        args.push(path_str.as_str());
+    }
 
     let attribute_str = attribute.to_string();
     if !attribute.is_toplevel() {
         args.push("-A");
         args.push(&attribute_str);
-    }
-
-    if !out_links {
-        args.push("--no-out-link");
     }
 
     for (k, v) in nix_options {
@@ -196,14 +210,7 @@ pub fn build_flake(path: &Path, attribute: &AttributePath, out_links: bool, nix_
 
     args.extend(extra_args.iter().map(|s| s.as_str()));
 
-    let out = exec_output("nix-build", &args)?;
-    out.lines()
-        .map(PathBuf::from)
-        .map(|p| if p.exists() {
-            Ok(p)
-        } else {
-            Err(NieError::BuiltPathMissing(p.to_string_lossy().into()))
-        }).collect()
+    exec_output("nix-instantiate", &args)
 }
 
 pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &str)]) -> NieResult<()> {

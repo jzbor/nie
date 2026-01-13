@@ -34,8 +34,12 @@ enum Subcommand {
     Build(commands::build::BuildCommand),
 
     /// Enter a dev shell from a Nix repo
-    #[command(alias = "dev", alias = "dev-shell")]
+    #[command(visible_alias = "dev", alias = "dev-shell")]
     Develop(commands::develop::DevelopCommand),
+
+    /// Evaluate an expression from a Nix repo
+    #[command(visible_alias = "eval")]
+    Evaluate(commands::evaluate::EvaluateCommand),
 
     /// Generate man pages
     #[command(hide = true)]
@@ -81,6 +85,7 @@ fn main() {
         Build(cmd) => cmd.exec(),
         Completions(cmd) => cmd.exec(),
         Develop(cmd) => cmd.exec(),
+        Evaluate(cmd) => cmd.exec(),
         Man(cmd) => cmd.exec(),
         Run(cmd) => cmd.exec(),
         Shell(cmd) => cmd.exec(),

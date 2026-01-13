@@ -112,20 +112,33 @@ impl NixOutput {
         let attr = self.attr().clone();
         let path = self.file().path();
 
-
         if let Some(paths) = &self.0.read().unwrap().built_paths {
             return Ok(paths.clone())
         }
 
-        let paths = if self.file().flake_compat() {
+        if self.file().flake_compat() {
             announce(&format!("Building {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
-            nix::build_flake(&path, &attr, out_links, &build_args.nix_options(), extra_args)?
         } else {
             announce(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
-            nix::build(&path, &attr, out_links, &build_args.nix_options(), extra_args)?
         };
+
+        let paths = nix::build(&path, &attr, out_links, self.file().flake_compat(), &build_args.nix_options(), extra_args)?;
         self.0.write().unwrap().built_paths = Some(paths.clone());
         Ok(paths)
+    }
+
+    pub fn eval(&self, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<String> {
+        let attr = self.attr().clone();
+        let path = self.file().path();
+
+        if self.file().flake_compat() {
+            announce(&format!("Evaluating {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
+        } else {
+            announce(&format!("Evaluating {} from {}", attr.to_string_user(), path.to_string_lossy()));
+        };
+
+        let output = nix::eval(&path, &attr, self.file().flake_compat(), &build_args.nix_options(), extra_args)?;
+        Ok(output)
     }
 
     pub fn enter_dev_shell(&self, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
