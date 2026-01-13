@@ -15,7 +15,7 @@ pub struct BuildCommand {
     build_args: BuildArgs,
 
     /// Additional arguments for the nix builder (see nix-build(1))
-    #[arg(last = true)]
+    #[arg(last = true, allow_hyphen_values = true)]
     extra_args: Vec<String>,
 }
 

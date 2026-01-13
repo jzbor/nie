@@ -213,7 +213,7 @@ pub fn eval(path: &Path, attribute: &AttributePath, flake_compat: bool, nix_opti
     exec_output("nix-instantiate", &args)
 }
 
-pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &str)]) -> NieResult<()> {
+pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<()> {
     let mut args = vec!();
 
     for path in paths {
@@ -235,6 +235,7 @@ pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &
         args.push((*v).to_owned());
     }
 
+    args.extend_from_slice(extra_args);
     exec("nix-shell", &args)
 }
 
