@@ -133,6 +133,6 @@ impl NixOutput {
         let path = self.file().path();
 
         announce(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
-        nix::dev_shell(&path, &attr, command, extra_args)
+        nix::dev_shell(&path, &attr, self.file().flake_compat(), command, extra_args)
     }
 }

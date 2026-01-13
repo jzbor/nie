@@ -246,12 +246,23 @@ pub fn current_system() -> NieResult<String> {
     ])
 }
 
-pub fn dev_shell(path: &Path, attribute: &AttributePath, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
+pub fn dev_shell(path: &Path, attribute: &AttributePath, flake_compat: bool, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
+    let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
-        path.to_string_lossy().to_string(),
         "-A".to_string(),
         attribute.to_string(),
     ];
+
+    if flake_compat {
+        args.push("--expr".to_owned());
+        args.push(include_str!("./nix/compat.nix").to_owned());
+
+        args.push("--arg".to_owned());
+        args.push("path".to_owned());
+        args.push(path_str.clone());
+    } else {
+        args.push(path_str);
+    }
 
     if let Some(cmd) = command {
         args.push("--command".to_owned());
