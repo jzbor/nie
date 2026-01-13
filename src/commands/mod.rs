@@ -2,6 +2,7 @@ use crate::error::NieResult;
 
 pub mod aliases;
 pub mod build;
+pub mod check;
 pub mod completions;
 pub mod develop;
 pub mod evaluate;

@@ -26,6 +26,9 @@ enum Subcommand {
     /// Show and update aliases
     Aliases(commands::aliases::AliasesCommand),
 
+    /// Run checks for a Nix repo
+    Check(commands::check::CheckCommand),
+
     /// Generate shell completions
     #[command(hide = true)]
     Completions(commands::completions::CompletionsCommand),
@@ -86,6 +89,7 @@ fn main() {
     let result = match args.subcommand {
         Aliases(cmd) => cmd.exec(),
         Build(cmd) => cmd.exec(),
+        Check(cmd) => cmd.exec(),
         Completions(cmd) => cmd.exec(),
         Develop(cmd) => cmd.exec(),
         Evaluate(cmd) => cmd.exec(),
