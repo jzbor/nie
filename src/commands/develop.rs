@@ -13,12 +13,15 @@ pub struct DevelopCommand {
     /// Additional arguments for the nix builder (see nix-build(1))
     #[arg(last = true)]
     extra_args: Vec<String>,
+
+    #[arg(short, long)]
+    command: Option<String>,
 }
 
 impl super::Command for DevelopCommand {
     fn exec(self) -> NieResult<()> {
         let file = NixFile::fetch(self.reference.file(), false)?;
         let output = file.output(self.reference.attribute().clone(), &AttributePath::common_dev_shell_locations())?;
-        output.enter_dev_shell(&self.extra_args)
+        output.enter_dev_shell(self.command, &self.extra_args)
     }
 }

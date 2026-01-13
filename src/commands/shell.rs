@@ -14,6 +14,9 @@ pub struct ShellCommand {
 
     #[clap(flatten)]
     build_args: BuildArgs,
+
+    #[arg(short, long)]
+    command: Option<String>,
 }
 
 impl super::Command for ShellCommand {
@@ -25,6 +28,6 @@ impl super::Command for ShellCommand {
             .collect();
 
         announce(&format!("Entering shell with {} added paths", paths.len()));
-        nix::shell(&paths, &self.build_args.nix_options())
+        nix::shell(&paths, self.command, &self.build_args.nix_options())
     }
 }

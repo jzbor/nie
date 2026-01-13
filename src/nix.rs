@@ -206,7 +206,7 @@ pub fn build_flake(path: &Path, attribute: &AttributePath, out_links: bool, nix_
         }).collect()
 }
 
-pub fn shell(paths: &[PathBuf], nix_options: &[(&str, &str)]) -> NieResult<()> {
+pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &str)]) -> NieResult<()> {
     let mut args = vec!();
 
     for path in paths {
@@ -214,7 +214,10 @@ pub fn shell(paths: &[PathBuf], nix_options: &[(&str, &str)]) -> NieResult<()> {
         args.push(path.to_string_lossy().to_string());
     }
 
-    if let Ok(shell) = env::var("SHELL") {
+    if let Some(cmd) = command {
+        args.push("--command".to_owned());
+        args.push(cmd);
+    } else if let Ok(shell) = env::var("SHELL") {
         args.push("--command".to_owned());
         args.push(shell);
     }
@@ -237,14 +240,17 @@ pub fn current_system() -> NieResult<String> {
     ])
 }
 
-pub fn dev_shell(path: &Path, attribute: &AttributePath, extra_args: &[String]) -> NieResult<()> {
+pub fn dev_shell(path: &Path, attribute: &AttributePath, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
     let mut args = vec![
         path.to_string_lossy().to_string(),
         "-A".to_string(),
         attribute.to_string(),
     ];
 
-    if let Ok(shell) = env::var("SHELL") {
+    if let Some(cmd) = command {
+        args.push("--command".to_owned());
+        args.push(cmd);
+    } else if let Ok(shell) = env::var("SHELL") {
         args.push("--command".to_owned());
         args.push(shell);
     }

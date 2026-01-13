@@ -128,11 +128,11 @@ impl NixOutput {
         Ok(paths)
     }
 
-    pub fn enter_dev_shell(&self, extra_args: &[String]) -> NieResult<()> {
+    pub fn enter_dev_shell(&self, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
         let attr = self.attr().clone();
         let path = self.file().path();
 
         announce(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
-        nix::dev_shell(&path, &attr, extra_args)
+        nix::dev_shell(&path, &attr, command, extra_args)
     }
 }
