@@ -97,7 +97,11 @@ impl NixFile {
     }
 
     pub fn has_attribute(&self, attr: &AttributePath) -> NieResult<bool> {
-        nix::has_attribute(&self.path(), attr)
+        if self.flake_compat() {
+            nix::has_attribute_flake(&self.path(), attr)
+        } else {
+            nix::has_attribute(&self.path(), attr)
+        }
     }
 
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {

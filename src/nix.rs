@@ -113,6 +113,27 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
     Ok(found)
 }
 
+pub fn has_attribute_flake(file: &Path, attr: &AttributePath) -> NieResult<bool> {
+    let compat = include_str!("./nix/compat.nix");
+
+    exec_output("nix-instantiate", [
+        "--eval",
+        file.join("flake.nix").to_string_lossy().to_string().as_str(),
+        "--log-format", "bar",
+    ])?;
+
+    let found = exec_quiet("nix-instantiate", [
+        "--eval",
+        "--raw",
+        "--expr",
+        "--log-format", "bar",
+        &format!("{{ path, }}: (({}) {{ inherit path; }}).{}", compat, attr),
+        "--arg", "path", file.to_string_lossy().to_string().as_str(),
+    ]).is_ok();
+
+    Ok(found)
+}
+
 pub fn build(path: &Path, attribute: &AttributePath, out_links: bool, nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
