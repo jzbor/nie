@@ -1,6 +1,10 @@
+use std::time::Instant;
+
+use colored::Colorize;
+
 use crate::{BuildArgs, nix};
 use crate::attribute_path::AttributePath;
-use crate::error::NieResult;
+use crate::error::{NieError, NieResult};
 use crate::interaction::announce;
 use crate::location::NixReference;
 use crate::store::checkout::Checkout;
@@ -11,6 +15,9 @@ pub struct CheckCommand {
     /// Nix reference to fetch and check
     #[arg(default_value = "./.")]
     reference: NixReference,
+
+    #[arg(short, long)]
+    keep_going: bool,
 
     #[clap(flatten)]
     build_args: BuildArgs,
@@ -45,10 +52,54 @@ impl super::Command for CheckCommand {
                 .collect::<NieResult<_>>()?
         };
 
-        for check in checks {
-            announce(&format!("Running check \"{}\"", check.reference().attribute()));
-            check.build(false, &self.build_args, &self.extra_args)?;
+        if checks.is_empty() {
+            return Err(NieError::NoChecksFound(self.reference.into()))
         }
+
+        println!();
+        announce(&format!("Running {} checks:", checks.len()));
+        for check in &checks {
+            println!("  🔳 {}", check.reference().attribute());
+        }
+        println!();
+
+        let start = Instant::now();
+        let mut results = Vec::new();
+        for check in &checks {
+            announce(&format!("Running check \"{}\"", check.reference().attribute()));
+            let result = check.build(false, &self.build_args, &self.extra_args);
+            let is_err = result.is_err();
+            results.push(result);
+
+            if is_err {
+                println!("{}: {}", "FAILURE".red().bold(), check.reference().attribute())
+            } else {
+                println!("{}: {}", "SUCCESS".green().bold(), check.reference().attribute())
+            }
+
+            if !self.keep_going && is_err {
+                break;
+            }
+        }
+        let end = Instant::now();
+
+        println!();
+        announce(&format!("Results (took {:?}):", end - start));
+        for (i, check) in checks.into_iter().enumerate() {
+            let result = results.get(i);
+            match result {
+                Some(Ok(_)) => println!("  ✅ {}", check.reference().attribute()),
+                Some(Err(_)) => println!("  ❌ {}", check.reference().attribute()),
+                None => println!("  ❔ {}", check.reference().attribute()),
+            }
+        }
+        println!();
+        if results.iter().any(Result::is_err) {
+            println!("    {}", "FAILURE".red().bold())
+        } else {
+            println!("    {}", "SUCCESS".green().bold())
+        }
+        println!();
 
         Ok(())
     }

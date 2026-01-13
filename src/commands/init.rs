@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::BuildArgs;
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::announce;
+use crate::interaction::inform;
 use crate::location::NixReference;
 use crate::store::checkout::Checkout;
 
@@ -43,11 +43,11 @@ impl super::Command for InitCommand {
             output.eval(&self.build_args, &[])?
                 .lines()
                 .next()
-                .map(|s| PathBuf::from(s))
+                .map(PathBuf::from)
                 .ok_or_else(|| NieError::NoOutputPath(self.reference.into()))?
         };
 
-        announce(&format!("Copying {} to {}", template.to_string_lossy(), self.destination.to_string_lossy()));
+        inform(&format!("Copying {} to {}", template.to_string_lossy(), self.destination.to_string_lossy()));
         copy(&template, &self.destination, true)
     }
 }

@@ -74,14 +74,14 @@ impl NixFile {
 
     pub fn output(&self, mut attr: AttributePath, common_locations: &[AttributePath]) -> NieResult<NixOutput> {
         if attr == AttributePath::default() {
-            for d in common_locations.into_iter().map(|l| l.child("default".to_owned())) {
+            for d in common_locations.iter().map(|l| l.child("default".to_owned())) {
                 if self.has_attribute(&d).unwrap_or_default() {
                     attr = d.to_owned();
                     break
                 }
             }
         } else if !self.has_attribute(&attr).unwrap_or(true) {
-            for d in common_locations.into_iter().map(|l| l.join(&attr)) {
+            for d in common_locations.iter().map(|l| l.join(&attr)) {
                 if self.has_attribute(&d).unwrap_or_default() {
                     attr = d.to_owned();
                     break

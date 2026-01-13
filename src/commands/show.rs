@@ -33,6 +33,7 @@ impl super::Command for ShowCommand {
         for (reference, file) in iter::zip(self.refs.into_iter(), files.into_iter()) {
             println!("[{}]:", reference);
             file.attributes(self.depth, self.reject_broken)?
+                .filter(|a| !(file.flake_compat() && a.len() > 1 && a.first().map(|c| c == "outputs").unwrap_or_default()))
                 .for_each(|a| println!("{:>width$}{}", "", a.name().unwrap_or_default(), width=(a.depth() + 1) * 2));
             println!()
         }

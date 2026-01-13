@@ -57,6 +57,9 @@ pub enum NieError {
 
     #[error("Program not found: {0}")]
     ProgramNotFound(Box<NixReference>),
+
+    #[error("No checks found for {0}")]
+    NoChecksFound(Box<NixReference>),
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {

@@ -41,6 +41,15 @@ in rec {
     '';
   });
 
+  checks = {
+    default = checks.package;
+    package = packages.default;
+    clippy = craneLib.cargoClippy (commonArgs //{
+      inherit cargoArtifacts;
+      cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+    });
+  };
+
   devShells.default = craneLib.devShell (commonArgs // {
     inherit (packages.default) name;
 

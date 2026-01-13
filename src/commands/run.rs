@@ -2,7 +2,7 @@ use std::process;
 
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::announce;
+use crate::interaction::inform;
 use crate::location::NixReference;
 use crate::store::file::NixFile;
 use crate::{BuildArgs, nix};
@@ -34,9 +34,8 @@ impl super::Command for RunCommand {
             .or_else(|| output.drv_name().ok().map(|n| path.join("bin").join(n)))
             .ok_or_else(|| NieError::ProgramNotFound(self.reference.into()))?;
 
-        eprintln!("path: {}", bin_path.to_string_lossy());
-
-        announce(&format!("Executing {}", bin_path.to_string_lossy()));
+        inform(&format!("Executing {}", bin_path.to_string_lossy()));
+        println!();
         match nix::exec(bin_path.to_string_lossy().to_string().as_str(), self.args) {
             Err(NieError::ExternalCommand(_, code)) => process::exit(code),
             other => other,

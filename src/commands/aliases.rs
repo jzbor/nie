@@ -36,7 +36,7 @@ impl super::Command for AliasesCommand {
                 .append(true)
                 .create(true)
                 .open(aliases::user_alias_file()?)?;
-            write!(file, "{} {}\n", src, dest)?;
+            writeln!(file, "{} {}", src, dest)?;
         } else if let Some(query) = self.query {
             let aliases = aliases::load_aliases()?;
             let dest = aliases.get(&query)

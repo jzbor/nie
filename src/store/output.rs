@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::announce;
+use crate::interaction::inform;
 use crate::location::NixReference;
 use crate::store::checkout::Checkout;
 use crate::store::file::NixFile;
@@ -104,9 +104,9 @@ impl NixOutput {
         }
 
         if self.file().flake_compat() {
-            announce(&format!("Building {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
+            inform(&format!("Building {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
         } else {
-            announce(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
+            inform(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
         };
 
         let paths = nix::build(&path, &attr, allow_out_links, self.file().flake_compat(), &build_args.nix_options(), extra_args)?;
@@ -119,9 +119,9 @@ impl NixOutput {
         let path = self.file().path();
 
         if self.file().flake_compat() {
-            announce(&format!("Evaluating {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
+            inform(&format!("Evaluating {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
         } else {
-            announce(&format!("Evaluating {} from {}", attr.to_string_user(), path.to_string_lossy()));
+            inform(&format!("Evaluating {} from {}", attr.to_string_user(), path.to_string_lossy()));
         };
 
         let output = nix::eval(&path, &attr, self.file().flake_compat(), &build_args.nix_options(), extra_args)?;
@@ -132,7 +132,7 @@ impl NixOutput {
         let attr = self.attr().clone();
         let path = self.file().path();
 
-        announce(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
+        inform(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
         nix::dev_shell(&path, &attr, self.file().flake_compat(), command, extra_args)
     }
 }
