@@ -11,7 +11,7 @@ use crate::store::checkout::Checkout;
 
 
 #[derive(clap::Args)]
-pub struct InitCommand {
+pub struct InitializeCommand {
     /// Nix references to fetch and build
     reference: NixReference,
 
@@ -25,7 +25,7 @@ pub struct InitCommand {
     build_args: BuildArgs,
 }
 
-impl super::Command for InitCommand {
+impl super::Command for InitializeCommand {
     fn exec(self) -> NieResult<()> {
         let common = AttributePath::common_template_locations();
 

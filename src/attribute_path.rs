@@ -16,14 +16,37 @@ impl AttributePath {
         AttributePath(new_path)
     }
 
+    pub fn parent(&self) -> Option<Self> {
+        if *self == Self::default() {
+            return None
+        }
+
+        let mut new_path = self.0.clone();
+        new_path.pop();
+        Some(AttributePath(new_path))
+    }
+
     pub fn join(&self, other: &Self) -> Self {
         let mut new_path = self.0.clone();
         new_path.extend(other.0.clone());
         AttributePath(new_path)
     }
 
+    #[allow(dead_code)]  // TODO remove if truely not needed
+    pub fn is_child(&self, potential_parent: &Self) -> bool {
+        self.parent()
+            .map(|p| p == *potential_parent)
+            .unwrap_or_default()
+    }
+
+    pub fn is_indirect_child(&self, potential_parent: &Self) -> bool {
+        self.parent()
+            .map(|p| p == *potential_parent || p.is_indirect_child(potential_parent))
+            .unwrap_or_default()
+    }
+
     pub fn depth(&self) -> usize {
-        self.len() - 1
+        self.len()
     }
 
     pub fn is_toplevel(&self) -> bool {

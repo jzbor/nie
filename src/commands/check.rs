@@ -36,15 +36,16 @@ impl super::Command for CheckCommand {
         let checks = if *self.reference.attribute() != AttributePath::default() {
             vec!(file.output(self.reference.attribute().to_owned(), &common)?)
         } else {
-            let prefix = if file.has_attribute(&AttributePath::from("checks").child(nix::current_system()?))? {
+            let check_parent = if file.has_attribute(&AttributePath::from("checks").child(nix::current_system()?))? {
                 AttributePath::from("checks").child(nix::current_system()?)
             } else {
                 AttributePath::from("checks")
             };
-            let prefix_str = prefix.to_string();
+
             let potential_checks: Vec<_> = file.attributes(5, false)?
-                .filter(|a| a.to_string().starts_with(prefix_str.as_str()))
+                .filter(|a| a.is_indirect_child(&check_parent))
                 .collect();
+
             // Only consider leaf elements
             potential_checks.iter()
                 .filter(|c| !potential_checks.iter().any(|pc| pc != *c && pc.to_string().starts_with(&c.to_string())))

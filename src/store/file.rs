@@ -1,7 +1,7 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
@@ -14,12 +14,13 @@ use crate::registry::Registry;
 static FILE_REGISTRY: Registry<(NixFileReference, bool), NixFile> = Registry::new();
 
 #[derive(Clone)]
-pub struct NixFile(Arc<InnerNixFile>);
+pub struct NixFile(Arc<RwLock<InnerNixFile>>);
 
 struct InnerNixFile {
     checkout: Checkout,
     filename: Option<PathBuf>,
     flake_compat: bool,
+    cached_attributes: HashMap<AttributePath, bool>,
 }
 
 pub struct AttributeIterator<'a> {
@@ -43,18 +44,21 @@ impl NixFile {
         let requires_flake_compat = fs::exists(checkout_dir.join("flake.nix"))?
             && !fs::exists(expected_file)?;
         let flake_compat = requires_flake_compat || force_flake_compat;
+        let cached_attributes = HashMap::default();
 
 
-        let file = NixFile(Arc::new(InnerNixFile {
+        let file = NixFile(Arc::new(RwLock::new(InnerNixFile {
             checkout,
             filename,
             flake_compat,
-        }));
+            cached_attributes,
+        })));
 
         if !file.path().exists() {
+            let read = file.0.read().unwrap();
             return Err(NieError::NixFileNotFound(
-                    file.0.filename.as_ref().map(|f| f.to_string_lossy().to_string()).unwrap_or_default(),
-                    file.0.checkout.path().to_string_lossy().to_string()
+                    read.filename.as_ref().map(|f| f.to_string_lossy().to_string()).unwrap_or_default(),
+                    read.checkout.path().to_string_lossy().to_string()
             ))
         }
 
@@ -64,7 +68,7 @@ impl NixFile {
     }
 
     pub fn flake_compat(&self) -> bool {
-        self.0.flake_compat
+        self.0.read().unwrap().flake_compat
     }
 
     pub fn fetch(reference: &NixFileReference, force_flake_compat: bool) -> NieResult<Self> {
@@ -100,15 +104,26 @@ impl NixFile {
     }
 
     pub fn reference(&self) -> NixFileReference {
-        self.0.checkout.repository().with_file(self.0.filename.clone())
+        let filename = self.0.read().unwrap().filename.clone();
+        self.0.read().unwrap().checkout.repository().with_file(filename)
     }
 
     pub fn has_attribute(&self, attr: &AttributePath) -> NieResult<bool> {
-        if self.flake_compat() {
+        if let Some(cached) = self.0.read().unwrap().cached_attributes.get(attr) {
+            return Ok(*cached);
+        }
+
+        let res = if self.flake_compat() {
             nix::has_attribute_flake(&self.path(), attr)
         } else {
             nix::has_attribute(&self.path(), attr)
+        };
+
+        if let Ok(b) = res {
+            self.0.write().unwrap().cached_attributes.insert(attr.to_owned(), b);
         }
+
+        res
     }
 
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
@@ -188,9 +203,9 @@ impl NixFile {
     }
 
     pub fn path(&self) -> PathBuf {
-        match &self.0.filename {
-            Some(filename) => self.0.checkout.path().join(filename),
-            None => self.0.checkout.path().to_owned(),
+        match &self.0.read().unwrap().filename {
+            Some(filename) => self.0.read().unwrap().checkout.path().join(filename),
+            None => self.0.read().unwrap().checkout.path().to_owned(),
         }
     }
 }

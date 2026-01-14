@@ -45,7 +45,8 @@ enum Subcommand {
     Evaluate(commands::evaluate::EvaluateCommand),
 
     /// Initialize a new nix project from a template
-    Init(commands::init::InitCommand),
+    #[command(visible_alias = "init", visible_alias = "initialise")]
+    Initialize(commands::initialize::InitializeCommand),
 
     /// Generate man pages
     #[command(hide = true)]
@@ -93,7 +94,7 @@ fn main() {
         Completions(cmd) => cmd.exec(),
         Develop(cmd) => cmd.exec(),
         Evaluate(cmd) => cmd.exec(),
-        Init(cmd) => cmd.exec(),
+        Initialize(cmd) => cmd.exec(),
         Man(cmd) => cmd.exec(),
         Run(cmd) => cmd.exec(),
         Shell(cmd) => cmd.exec(),

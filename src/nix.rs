@@ -101,13 +101,17 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
         "--log-format", "bar",
     ])?;
 
-    let found = exec_quiet("nix-instantiate", [
+    let output = exec_output("nix-instantiate", [
         "--eval",
         "--expr",
         "--log-format", "bar",
-        &format!("{{ file, }}: (import file {{}}).{}", attr),
+        &format!("{{ file, }}: (import file {{}}) ? {}", attr),
         "--arg", "file", file.to_string_lossy().to_string().as_str(),
-    ]).is_ok();
+    ])?;
+
+    let found = output.trim()
+        .parse()
+        .unwrap_or_default();
 
     Ok(found)
 }
@@ -121,14 +125,17 @@ pub fn has_attribute_flake(file: &Path, attr: &AttributePath) -> NieResult<bool>
         "--log-format", "bar",
     ])?;
 
-    let found = exec_quiet("nix-instantiate", [
+    let output = exec_output("nix-instantiate", [
         "--eval",
         "--expr",
         "--log-format", "bar",
-        &format!("{{ path, }}: (({}) {{ inherit path; }}).{}", compat, attr),
+        &format!("{{ path, }}: (({}) {{ inherit path; }}) ? {}", compat, attr),
         "--arg", "path", file.to_string_lossy().to_string().as_str(),
-    ]).is_ok();
+    ])?;
 
+    let found = output.trim()
+        .parse()
+        .unwrap_or_default();
     Ok(found)
 }
 
@@ -305,22 +312,6 @@ pub fn exec(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Nie
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
-        .status()?;
-
-    if !status.success() {
-        let code = status.code().unwrap_or(1);
-        Err(NieError::ExternalCommand(cmd.to_owned(), code))
-    } else {
-        Ok(())
-    }
-}
-
-pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<()> {
-    let status = process::Command::new(cmd)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
         .status()?;
 
     if !status.success() {

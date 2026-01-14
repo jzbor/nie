@@ -9,7 +9,7 @@ let
   discover = set: depth: let
     result = tryEval (if !(isSet set) || isDerivation set || isModule set || isConfig set || depth >= maxdepth
                       then {}
-                      else mapAttrs (n: v: discover v (depth + 1)) set);
+                      else mapAttrs (_: v: discover v (depth + 1)) set);
   in  if !result.success
       then "<broken>"
       else result.value;
@@ -26,7 +26,7 @@ let
   # })(attrNames flake.outputs));
   items = map (name: {
     inherit name;
-    value = (discover flake.outputs.${name} 1);
+    value = discover flake.outputs.${name} 1;
   }) (attrNames flake.outputs);
 in
   toJSON items

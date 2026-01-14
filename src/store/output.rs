@@ -31,9 +31,7 @@ impl NixOutput {
             return Ok(file);
         }
 
-        // TODO check attributes also for flake_compat
-        if !attr.is_toplevel() && !file.flake_compat()
-                && !nix::has_attribute(&file.path(), &attr)? {
+        if !attr.is_toplevel() && !file.has_attribute(&attr)? {
             return Err(NieError::AttributeNotFound(file.path().to_string_lossy().to_string(), attr))
         }
 
@@ -52,9 +50,12 @@ impl NixOutput {
         let repo_refs = refs.iter().map(|s| s.repository()).cloned();
         let filenames = refs.iter().map(|s| s.filename().cloned());
         let attributes = refs.iter().map(|s| s.attribute()).cloned();
+
         let checkouts = Checkout::create_all(repo_refs)?;
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), build_args.flake_compat)?;
         let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), common_locations)?;
+
+        
         outputs.into_iter()
             .map(|o| o.build(allow_out_links, build_args, extra_args)
                 .and_then(|p| if p.is_empty() {
@@ -89,6 +90,20 @@ impl NixOutput {
             .join("-");
 
         Ok(name)
+    }
+
+    pub fn main_program(&self) -> Option<PathBuf> {
+        let self_read = self.0.read().unwrap();
+        let built_paths = self_read.built_paths.as_ref();
+        let first_built_path = built_paths.and_then(|bp| bp.first())?;
+        let main_program_meta_path = self_read.attr.child("meta".to_owned()).child("mainProgram".to_owned());
+        let main_program_meta = self_read.file.output(main_program_meta_path, &[]).ok();
+        main_program_meta
+            .and_then(|mp| mp.eval(&BuildArgs::default(), &["--raw".to_string()]).ok())
+            .map(|mp| first_built_path.join("bin").join(mp))
+            .or_else(|| self.drv_name().ok().map(|n| first_built_path.join("bin").join(n)))
+            .ok_or_else(|| NieError::ProgramNotFound(self.reference().into()))
+            .ok()
     }
 
     pub fn reference(&self) -> NixReference {

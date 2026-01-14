@@ -9,7 +9,7 @@ let
   discover = set: depth: let
     result = tryEval (if !(isSet set) || isDerivation set || isModule set || isConfig set || depth >= maxdepth
                       then {}
-                      else mapAttrs (n: v: discover v (depth + 1)) set);
+                      else mapAttrs (_: v: discover v (depth + 1)) set);
   in  if !result.success
       then "<broken>"
       else result.value;
