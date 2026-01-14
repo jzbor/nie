@@ -19,6 +19,9 @@ pub struct CheckCommand {
     #[arg(short, long)]
     keep_going: bool,
 
+    #[arg(short, long)]
+    packages: bool,
+
     #[clap(flatten)]
     build_args: BuildArgs,
 
@@ -41,14 +44,19 @@ impl super::Command for CheckCommand {
             } else {
                 AttributePath::from("checks")
             };
+            let package_parent = if file.has_attribute(&AttributePath::from("packages").child(nix::current_system()?))? {
+                AttributePath::from("packages").child(nix::current_system()?)
+            } else {
+                AttributePath::from("packages")
+            };
 
             let potential_checks: Vec<_> = file.attributes(5, false)?
-                .filter(|a| a.is_indirect_child(&check_parent))
+                .filter(|a| a.is_indirect_child(&check_parent) || (self.packages && a.is_indirect_child(&package_parent)))
                 .collect();
 
             // Only consider leaf elements
             potential_checks.iter()
-                .filter(|c| !potential_checks.iter().any(|pc| pc != *c && pc.to_string().starts_with(&c.to_string())))
+                .filter(|c| !potential_checks.iter().any(|pc| pc.is_indirect_child(c)))
                 .map(|a| file.output(a.to_owned(), &[]))
                 .collect::<NieResult<_>>()?
         };
@@ -68,14 +76,18 @@ impl super::Command for CheckCommand {
         let mut results = Vec::new();
         for check in &checks {
             announce(&format!("Running check \"{}\"", check.reference().attribute()));
+            let start_time = Instant::now();
             let result = check.build(false, &self.build_args, &self.extra_args);
+            let end_time = Instant::now();
             let is_err = result.is_err();
             results.push(result);
 
             if is_err {
-                println!("{}: {}", "FAILURE".red().bold(), check.reference().attribute())
+                println!("{} to build \"{}\" (took {:?})", "FAILED".red().bold(),
+                    check.reference().attribute(), end_time - start_time)
             } else {
-                println!("{}: {}", "SUCCESS".green().bold(), check.reference().attribute())
+                println!("{} built \"{}\" (took {:?})", "SUCCESSFULLY".green().bold(),
+                    check.reference().attribute(), end_time - start_time)
             }
 
             if !self.keep_going && is_err {
