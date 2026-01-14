@@ -5,6 +5,7 @@
 }:
 let
   craneLib = import (pins.crane + /default.nix) { inherit pkgs; };
+  cfLib = import (pins.cf + /libpkgs.nix) pkgs;
 
   nixFilter = path: _type: builtins.match ".*nix$" path != null;
   cargoFilter = path: type: (nixFilter path type) || (craneLib.filterCargoSources path type);
@@ -48,20 +49,8 @@ in rec {
       inherit cargoArtifacts;
       cargoClippyExtraArgs = "--all-targets -- --deny warnings";
     });
-    deadnix = pkgs.stdenvNoCC.mkDerivation {
-      inherit (commonArgs) src;
-      name = "deadnix-report";
-      buildPhase = ''
-        ${pkgs.deadnix}/bin/deadnix -_ -L -f . | tee $out
-      '';
-    };
-    statix = pkgs.stdenvNoCC.mkDerivation {
-      inherit (commonArgs) src;
-      name = "statix-report";
-      buildPhase = ''
-        ${pkgs.statix}/bin/statix check -i /npins/ | tee $out
-      '';
-    };
+    statix = cfLib.mkStatixCheck { src = ./.; };
+    deadnix = cfLib.mkDeadnixCheck { src = ./.; };
   };
 
   devShells.default = craneLib.devShell (commonArgs // {
