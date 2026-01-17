@@ -16,6 +16,7 @@ pub struct CheckCommand {
     #[arg(default_value = "./.")]
     reference: NixReference,
 
+    /// Run all checks regardless of failing ones
     #[arg(short, long)]
     keep_going: bool,
 
