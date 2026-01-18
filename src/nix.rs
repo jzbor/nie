@@ -186,9 +186,14 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
         "--log-format", "bar",
     ];
 
+    let compat_expr = format!("\"{}\"",
+        include_str!("./nix/compat.nix")
+            .replace("\"", "\\\"")
+    );
+
     if eval_args.flake_compat {
         args.push("--expr");
-        args.push(include_str!("./nix/compat.nix"));
+        args.push(&compat_expr);
 
         args.push("--arg");
         args.push("path");
@@ -219,6 +224,7 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
 
     args.extend(extra_args.iter().map(|s| s.as_str()));
 
+    eprintln!("before ssh");
     let out = exec_output("ssh", &args)?;
     let paths: Vec<_> = out.lines()
         .map(PathBuf::from)
@@ -226,6 +232,7 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
     let path_refs: Vec<_> = paths.iter()
         .map(|p| p.as_path())
         .collect();
+    eprintln!("after ssh");
 
     pull_paths(&path_refs, remote)?;
 
