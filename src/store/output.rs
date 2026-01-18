@@ -8,7 +8,7 @@ use crate::interaction::inform;
 use crate::location::NixReference;
 use crate::store::checkout::Checkout;
 use crate::store::file::NixFile;
-use crate::{BuildArgs, nix};
+use crate::{EvalArgs, nix};
 use crate::registry::Registry;
 
 
@@ -46,18 +46,18 @@ impl NixOutput {
     }
 
     pub fn fetch_and_build_all(refs: &[NixReference], common_locations: &[AttributePath], allow_out_links: bool,
-            build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
+            eval_args: &EvalArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
         let repo_refs = refs.iter().map(|s| s.repository()).cloned();
         let filenames = refs.iter().map(|s| s.filename().cloned());
         let attributes = refs.iter().map(|s| s.attribute()).cloned();
 
         let checkouts = Checkout::create_all(repo_refs)?;
-        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), build_args.flake_compat)?;
+        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), eval_args.clone())?;
         let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), common_locations)?;
 
-        
+
         outputs.into_iter()
-            .map(|o| o.build(allow_out_links, build_args, extra_args)
+            .map(|o| o.build(allow_out_links, extra_args)
                 .and_then(|p| if p.is_empty() {
                     Err(NieError::NoOutputPath(o.reference().into()))
                 } else {
@@ -76,7 +76,7 @@ impl NixOutput {
     }
 
     pub fn drv_name(&self) -> NieResult<String> {
-        let paths = self.build(false, &BuildArgs::default(), &[])?;
+        let paths = self.build(false, &[])?;
         let path = paths.first()
             .ok_or(NieError::NoOutputPath(Box::new(self.reference())))?;
 
@@ -99,7 +99,7 @@ impl NixOutput {
         let main_program_meta_path = self_read.attr.child("meta".to_owned()).child("mainProgram".to_owned());
         let main_program_meta = self_read.file.output(main_program_meta_path, &[]).ok();
         main_program_meta
-            .and_then(|mp| mp.eval(&BuildArgs::default(), &["--raw".to_string()]).ok())
+            .and_then(|mp| mp.eval(&["--raw".to_string()]).ok())
             .map(|mp| first_built_path.join("bin").join(mp))
             .or_else(|| self.drv_name().ok().map(|n| first_built_path.join("bin").join(n)))
             .ok_or_else(|| NieError::ProgramNotFound(self.reference().into()))
@@ -110,7 +110,7 @@ impl NixOutput {
         self.file().reference().with_attribute(self.attr())
     }
 
-    pub fn build(&self, allow_out_links: bool, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+    pub fn build(&self, allow_out_links: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
         let attr = self.attr().clone();
         let path = self.file().path();
 
@@ -124,12 +124,12 @@ impl NixOutput {
             inform(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
         };
 
-        let paths = nix::build(&path, &attr, allow_out_links, self.file().flake_compat(), &build_args.nix_options(), extra_args)?;
+        let paths = nix::build(&path, &attr, allow_out_links, &self.file().eval_args(), extra_args)?;
         self.0.write().unwrap().built_paths = Some(paths.clone());
         Ok(paths)
     }
 
-    pub fn eval(&self, build_args: &BuildArgs, extra_args: &[String]) -> NieResult<String> {
+    pub fn eval(&self, extra_args: &[String]) -> NieResult<String> {
         let attr = self.attr().clone();
         let path = self.file().path();
 
@@ -139,7 +139,7 @@ impl NixOutput {
             inform(&format!("Evaluating {} from {}", attr.to_string_user(), path.to_string_lossy()));
         };
 
-        let output = nix::eval(&path, &attr, self.file().flake_compat(), &build_args.nix_options(), extra_args)?;
+        let output = nix::eval(&path, &attr, &self.file().eval_args(), extra_args)?;
         Ok(output)
     }
 
@@ -148,6 +148,6 @@ impl NixOutput {
         let path = self.file().path();
 
         inform(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
-        nix::dev_shell(&path, &attr, self.file().flake_compat(), command, extra_args)
+        nix::dev_shell(&path, &attr, &self.file().eval_args(), command, extra_args)
     }
 }

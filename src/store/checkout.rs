@@ -5,7 +5,7 @@ use crate::error::NieResult;
 use crate::interaction::inform;
 use crate::location::{RepositoryLocation, RepositoryReference};
 use crate::store::file::NixFile;
-use crate::nix;
+use crate::{EvalArgs, nix};
 use crate::registry::Registry;
 
 
@@ -53,14 +53,14 @@ impl Checkout {
             .collect()
     }
 
-    pub fn file(&self, filename: Option<PathBuf>, force_flake_compat: bool) -> NieResult<NixFile> {
-        NixFile::new(self.clone(), filename, force_flake_compat)
+    pub fn file(&self, filename: Option<PathBuf>, eval_args: EvalArgs) -> NieResult<NixFile> {
+        NixFile::new(self.clone(), filename, eval_args)
     }
 
-    pub fn files(files: impl IntoIterator<Item = (Self, Option<PathBuf>)>, force_flake_compat: bool)
+    pub fn files(files: impl IntoIterator<Item = (Self, Option<PathBuf>)>, eval_args: EvalArgs)
             -> NieResult<Vec<NixFile>> {
         files.into_iter()
-            .map(|(c, f)| c.file(f.clone(), force_flake_compat))
+            .map(|(c, f)| c.file(f.clone(), eval_args.clone()))
             .collect()
     }
 

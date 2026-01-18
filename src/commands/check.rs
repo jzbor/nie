@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use colored::Colorize;
 
-use crate::{BuildArgs, nix};
+use crate::{EvalArgs, nix};
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 use crate::interaction::announce;
@@ -24,7 +24,7 @@ pub struct CheckCommand {
     packages: bool,
 
     #[clap(flatten)]
-    build_args: BuildArgs,
+    eval_args: EvalArgs,
 
     /// Additional arguments for the nix builder (see nix-build(1))
     #[arg(last = true, allow_hyphen_values = true)]
@@ -35,7 +35,7 @@ impl super::Command for CheckCommand {
     fn exec(self) -> NieResult<()> {
         let common = AttributePath::common_check_locations();
         let checkout = Checkout::create(self.reference.repository().clone())?;
-        let file = checkout.file(self.reference.filename().cloned(), self.build_args.flake_compat)?;
+        let file = checkout.file(self.reference.filename().cloned(), self.eval_args)?;
 
         let checks = if *self.reference.attribute() != AttributePath::default() {
             vec!(file.output(self.reference.attribute().to_owned(), &common)?)
@@ -78,7 +78,7 @@ impl super::Command for CheckCommand {
         for check in &checks {
             announce(&format!("Running check \"{}\"", check.reference().attribute()));
             let start_time = Instant::now();
-            let result = check.build(false, &self.build_args, &self.extra_args);
+            let result = check.build(false, &self.extra_args);
             let end_time = Instant::now();
             let is_err = result.is_err();
             results.push(result);

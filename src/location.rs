@@ -178,10 +178,10 @@ impl Display for NixReference {
             write!(f, "#{}", self.attribute)?;
         }
         if let Some(file) = &self.filename {
-            write!(f, "#file:{}", file.to_string_lossy())?;
+            write!(f, "#file={}", file.to_string_lossy())?;
         }
         for (k, v) in &self.checkout_args {
-            write!(f, "#{}:{}", k, v)?;
+            write!(f, "#{}={}", k, v)?;
         }
         Ok(())
 
@@ -192,10 +192,10 @@ impl Display for NixFileReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.location)?;
         if let Some(file) = &self.filename {
-            write!(f, "#file:{}", file.to_string_lossy())?;
+            write!(f, "#file={}", file.to_string_lossy())?;
         }
         for (k, v) in &self.checkout_args {
-            write!(f, "#{}:{}", k, v)?;
+            write!(f, "#{}={}", k, v)?;
         }
         Ok(())
     }

@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use clap::Parser;
 
 use crate::commands::Command;
+use crate::error::NieResult;
 
 
 mod attribute_path;
@@ -62,8 +65,8 @@ enum Subcommand {
     Show(commands::show::ShowCommand),
 }
 
-#[derive(Debug, Default, clap::Args)]
-struct BuildArgs {
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, clap::Args)]
+struct EvalArgs {
     /// Enable Flake compatibility
     #[arg(short, long)]
     flake_compat: bool,
@@ -71,16 +74,81 @@ struct BuildArgs {
     /// Additional options for the nix builder (see nix-build(1))
     #[arg(long("nix-option"), num_args = 2)]
     nix_options: Vec<Vec<String>>,
+
+    /// `true` if the targeted expression is not a lambda at the toplevel
+    ///
+    /// Calculated on the fly.
+    // #[arg(skip)]
+    #[arg(long)]
+    is_lambda: bool,
+
+    /// Additional arguments to pass to the expression at the toplevel
+    #[arg(long("arg"), num_args = 2)]
+    args: Vec<Vec<String>>,
+
+    /// Pass 'system' argument to the expression
+    ///
+    /// As a flag this provides builtins.currentSystem, otherwise it is possible to provide a
+    /// custom value.
+    #[arg(long)]
+    system: Option<Option<String>>,
 }
 
-impl BuildArgs {
+
+impl EvalArgs {
     fn nix_options(&self) -> Vec<(&str, &str)> {
         self.nix_options.iter()
             .flat_map(|v| v.as_chunks::<2>().0.first())
             .map(|s| (s[0].as_str(), s[1].as_str()))
             .collect()
     }
+
+    fn expression_args(&self) -> Vec<(&str, &str)> {
+        self.args.iter()
+            .flat_map(|v| v.as_chunks::<2>().0.first())
+            .map(|s| (s[0].as_str(), s[1].as_str()))
+            .collect()
+    }
+
+    fn expression_args_str(&self) -> NieResult<String> {
+        if !self.is_lambda {
+            return Ok(String::new());
+        }
+
+        let mut s = String::new();
+        let mut map: HashMap<_, _> = self.expression_args().into_iter()
+            .collect();
+
+        #[allow(unused_assignments)]
+        let mut current_system = String::new();
+        match &self.system {
+            Some(None) => {
+                current_system = format!("\"{}\"", nix::current_system()?);
+                map.insert("system", &current_system);
+            },
+            Some(Some(s)) => {
+                current_system = format!("\"{}\"", s.as_str());
+                map.insert("system", current_system.as_str());
+            },
+            None => (),
+        }
+
+
+        s.push_str("{ ");
+
+        for (key, value) in map {
+            s.push_str(key);
+            s.push_str(" = ");
+            s.push_str(value);
+            s.push_str("; ");
+        }
+
+        s.push_str("} ");
+
+        Ok(s)
+    }
 }
+
 
 fn main() {
     error::resolve(aliases::load_aliases());

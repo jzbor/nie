@@ -4,6 +4,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{self, Stdio};
 
+use crate::EvalArgs;
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 
@@ -94,20 +95,38 @@ pub fn fetch_github(owner: &str, repo: &str, branch: Option<&str>, args: &BTreeM
     }
 }
 
-pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
-    exec_output("nix-instantiate", [
-        "--eval",
-         file.to_string_lossy().to_string().as_str(),
-        "--log-format", "bar",
-    ])?;
+pub fn has_attribute(file: &Path, attr: &AttributePath, eval_args: &EvalArgs) -> NieResult<bool> {
+    let output = if eval_args.flake_compat {
+        let compat = include_str!("./nix/compat.nix");
 
-    let output = exec_output("nix-instantiate", [
-        "--eval",
-        "--expr",
-        "--log-format", "bar",
-        &format!("{{ file, }}: (import file {{}}) ? {}", attr),
-        "--arg", "file", file.to_string_lossy().to_string().as_str(),
-    ])?;
+        exec_output("nix-instantiate", [
+            "--eval",
+            file.join("flake.nix").to_string_lossy().to_string().as_str(),
+            "--log-format", "bar",
+        ])?;
+
+        exec_output("nix-instantiate", [
+            "--eval",
+            "--expr",
+            "--log-format", "bar",
+            &format!("{{ path, }}: (({}) {{ inherit path; }}) ? {}", compat, attr),
+            "--arg", "path", file.to_string_lossy().to_string().as_str(),
+        ])?
+    } else {
+        exec_output("nix-instantiate", [
+            "--eval",
+            file.to_string_lossy().to_string().as_str(),
+            "--log-format", "bar",
+        ])?;
+
+        exec_output("nix-instantiate", [
+            "--eval",
+            "--expr",
+            "--log-format", "bar",
+            &format!("{{ file, }}: (import file {}) ? {}", eval_args.expression_args_str()?, attr),
+            "--arg", "file", file.to_string_lossy().to_string().as_str(),
+        ])?
+    };
 
     let found = output.trim()
         .parse()
@@ -116,37 +135,35 @@ pub fn has_attribute(file: &Path, attr: &AttributePath) -> NieResult<bool> {
     Ok(found)
 }
 
-pub fn has_attribute_flake(file: &Path, attr: &AttributePath) -> NieResult<bool> {
-    let compat = include_str!("./nix/compat.nix");
-
-    exec_output("nix-instantiate", [
-        "--eval",
-        file.join("flake.nix").to_string_lossy().to_string().as_str(),
-        "--log-format", "bar",
-    ])?;
-
+pub fn is_lambda(file: &Path) -> NieResult<bool> {
     let output = exec_output("nix-instantiate", [
         "--eval",
         "--expr",
+        "--raw",
+        &format!("builtins.typeOf (import {})", file.to_string_lossy()),
         "--log-format", "bar",
-        &format!("{{ path, }}: (({}) {{ inherit path; }}) ? {}", compat, attr),
-        "--arg", "path", file.to_string_lossy().to_string().as_str(),
     ])?;
 
-    let found = output.trim()
-        .parse()
-        .unwrap_or_default();
-    Ok(found)
+    Ok(output.trim() == "lambda")
 }
 
-pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, flake_compat: bool,
-        nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+pub fn current_system() -> NieResult<String> {
+    exec_output("nix-instantiate", [
+        "--eval",
+        "--raw",
+        "-E",
+        "builtins.currentSystem",
+    ])
+}
+
+pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval_args: &EvalArgs, extra_args: &[String])
+        -> NieResult<Vec<PathBuf>> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
         "--log-format", "bar",
     ];
 
-    if flake_compat {
+    if eval_args.flake_compat {
         args.push("--expr");
         args.push(include_str!("./nix/compat.nix"));
 
@@ -167,10 +184,16 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, flak
         args.push("--no-out-link");
     }
 
-    for (k, v) in nix_options {
+    for (k, v) in eval_args.nix_options() {
         args.push("--option");
         args.push(k);
         args.push(v);
+    }
+
+    for (key, value) in eval_args.expression_args() {
+        args.push("--arg");
+        args.push(key);
+        args.push(value);
     }
 
     args.extend(extra_args.iter().map(|s| s.as_str()));
@@ -185,12 +208,11 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, flak
         }).collect()
 }
 
-pub fn eval(path: &Path, attribute: &AttributePath, flake_compat: bool, nix_options: &[(&str, &str)],
-        extra_args: &[String]) -> NieResult<String> {
+pub fn eval(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, extra_args: &[String]) -> NieResult<String> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec!("--eval");
 
-    if flake_compat {
+    if eval_args.flake_compat {
         args.push("--expr");
         args.push(include_str!("./nix/compat.nix"));
 
@@ -207,7 +229,13 @@ pub fn eval(path: &Path, attribute: &AttributePath, flake_compat: bool, nix_opti
         args.push(&attribute_str);
     }
 
-    for (k, v) in nix_options {
+    for (key, value) in eval_args.expression_args() {
+        args.push("--arg");
+        args.push(key);
+        args.push(value);
+    }
+
+    for (k, v) in eval_args.nix_options() {
         args.push("--option");
         args.push(k);
         args.push(v);
@@ -218,12 +246,18 @@ pub fn eval(path: &Path, attribute: &AttributePath, flake_compat: bool, nix_opti
     exec_output("nix-instantiate", &args)
 }
 
-pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &str)], extra_args: &[String]) -> NieResult<()> {
+pub fn shell(paths: &[PathBuf], command: Option<String>, eval_args: &EvalArgs, extra_args: &[String]) -> NieResult<()> {
     let mut args = vec!();
 
     for path in paths {
         args.push("-p".to_owned());
         args.push(path.to_string_lossy().to_string());
+    }
+
+    for (k, v) in eval_args.nix_options() {
+        args.push("--option".to_owned());
+        args.push((*k).to_owned());
+        args.push((*v).to_owned());
     }
 
     if let Some(cmd) = command {
@@ -234,33 +268,18 @@ pub fn shell(paths: &[PathBuf], command: Option<String>, nix_options: &[(&str, &
         args.push(shell);
     }
 
-    for (k, v) in nix_options {
-        args.push("--option".to_owned());
-        args.push((*k).to_owned());
-        args.push((*v).to_owned());
-    }
-
     args.extend_from_slice(extra_args);
     exec("nix-shell", &args)
 }
 
-pub fn current_system() -> NieResult<String> {
-    exec_output("nix-instantiate", [
-        "--eval",
-        "--raw",
-        "-E",
-        "builtins.currentSystem",
-    ])
-}
-
-pub fn dev_shell(path: &Path, attribute: &AttributePath, flake_compat: bool, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
+pub fn dev_shell(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
         "-A".to_string(),
         attribute.to_string(),
     ];
 
-    if flake_compat {
+    if eval_args.flake_compat {
         args.push("--expr".to_owned());
         args.push(include_str!("./nix/compat.nix").to_owned());
 
@@ -269,6 +288,18 @@ pub fn dev_shell(path: &Path, attribute: &AttributePath, flake_compat: bool, com
         args.push(path_str.clone());
     } else {
         args.push(path_str);
+    }
+
+    for (key, value) in eval_args.expression_args() {
+        args.push("--arg".to_owned());
+        args.push(key.to_owned());
+        args.push(value.to_owned());
+    }
+
+    for (k, v) in eval_args.nix_options() {
+        args.push("--option".to_owned());
+        args.push((*k).to_owned());
+        args.push((*v).to_owned());
     }
 
     if let Some(cmd) = command {

@@ -1,5 +1,6 @@
 use std::iter;
 
+use crate::EvalArgs;
 use crate::interaction::announce;
 use crate::store::checkout::Checkout;
 use crate::error::NieResult;
@@ -24,9 +25,8 @@ pub struct ShowCommand {
     #[arg(short, long)]
     reject_broken: bool,
 
-    /// Force flake compatibility
-    #[arg(short, long)]
-    flake_compat: bool,
+    #[clap(flatten)]
+    eval_args: EvalArgs,
 }
 
 impl super::Command for ShowCommand {
@@ -34,7 +34,7 @@ impl super::Command for ShowCommand {
         let repo_refs = self.refs.iter().map(|s| s.repository()).cloned();
         let filenames = self.refs.iter().map(|s| s.filename().cloned());
         let checkouts = Checkout::create_all(repo_refs)?;
-        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), self.flake_compat)?;
+        let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), self.eval_args)?;
 
         for (reference, file) in iter::zip(self.refs.into_iter(), files.into_iter()) {
             let attributes = file.attributes(self.depth, self.reject_broken)?;

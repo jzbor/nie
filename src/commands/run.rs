@@ -5,7 +5,7 @@ use crate::error::{NieError, NieResult};
 use crate::interaction::inform;
 use crate::location::NixReference;
 use crate::store::file::NixFile;
-use crate::{BuildArgs, nix};
+use crate::{EvalArgs, nix};
 
 
 #[derive(clap::Args)]
@@ -13,6 +13,9 @@ pub struct RunCommand {
     /// Nix references to fetch and add to shell
     #[arg(default_value = "./.")]
     reference: NixReference,
+
+    #[clap(flatten)]
+    eval_args: EvalArgs,
 
     /// Arguments passed to command
     #[arg(last = true)]
@@ -23,9 +26,9 @@ pub struct RunCommand {
 impl super::Command for RunCommand {
     fn exec(self) -> NieResult<()> {
         let default = AttributePath::common_package_locations();
-        let file = NixFile::fetch(self.reference.file(), false)?;
+        let file = NixFile::fetch(self.reference.file(), self.eval_args)?;
         let output = file.output(self.reference.attribute().clone(), &default)?;
-        output.build(false, &BuildArgs::default(), &[])?;
+        output.build(false, &[])?;
         let bin_path = output.main_program()
             .ok_or_else(|| NieError::ProgramNotFound(self.reference.into()))?;
 

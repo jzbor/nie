@@ -2,7 +2,7 @@ use std::fs::{self, Permissions};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use crate::BuildArgs;
+use crate::{EvalArgs};
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 use crate::interaction::inform;
@@ -22,7 +22,7 @@ pub struct InitializeCommand {
     direct: bool,
 
     #[clap(flatten)]
-    build_args: BuildArgs,
+    eval_args: EvalArgs,
 }
 
 impl super::Command for InitializeCommand {
@@ -33,14 +33,14 @@ impl super::Command for InitializeCommand {
         let template = if self.direct {
             checkout.path().to_owned()
         } else {
-            let file = checkout.file(self.reference.filename().cloned(), self.build_args.flake_compat)?;
+            let file = checkout.file(self.reference.filename().cloned(), self.eval_args)?;
             let mut output = file.output(self.reference.attribute().clone(), &common)?;
 
             if file.has_attribute(&output.attr().child("path".to_owned()))? {
                 output = file.output(output.attr().child("path".to_owned()), &common)?;
             }
 
-            output.eval(&self.build_args, &[])?
+            output.eval(&[])?
                 .lines()
                 .next()
                 .map(PathBuf::from)

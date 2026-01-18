@@ -8,10 +8,10 @@ use crate::error::{NieError, NieResult};
 use crate::location::NixFileReference;
 use crate::store::checkout::Checkout;
 use crate::store::output::NixOutput;
-use crate::nix;
+use crate::{EvalArgs, nix};
 use crate::registry::Registry;
 
-static FILE_REGISTRY: Registry<(NixFileReference, bool), NixFile> = Registry::new();
+static FILE_REGISTRY: Registry<(NixFileReference, EvalArgs), NixFile> = Registry::new();
 
 #[derive(Clone)]
 pub struct NixFile(Arc<RwLock<InnerNixFile>>);
@@ -19,8 +19,8 @@ pub struct NixFile(Arc<RwLock<InnerNixFile>>);
 struct InnerNixFile {
     checkout: Checkout,
     filename: Option<PathBuf>,
-    flake_compat: bool,
     cached_attributes: HashMap<AttributePath, bool>,
+    eval_args: EvalArgs,
 }
 
 pub struct AttributeIterator<'a> {
@@ -30,8 +30,8 @@ pub struct AttributeIterator<'a> {
 
 
 impl NixFile {
-    pub fn new(checkout: Checkout, filename: Option<PathBuf>, force_flake_compat: bool) -> NieResult<Self> {
-        let key = (checkout.repository().with_file(filename.clone()), force_flake_compat);
+    pub fn new(checkout: Checkout, filename: Option<PathBuf>, mut eval_args: EvalArgs) -> NieResult<Self> {
+        let key = (checkout.repository().with_file(filename.clone()), eval_args.clone());
         if let Some(file) = FILE_REGISTRY.lookup(&key) {
             return Ok(file);
         }
@@ -42,16 +42,20 @@ impl NixFile {
             None => checkout_dir.join("default.nix"),
         };
         let requires_flake_compat = fs::exists(checkout_dir.join("flake.nix"))?
-            && !fs::exists(expected_file)?;
-        let flake_compat = requires_flake_compat || force_flake_compat;
+            && !fs::exists(&expected_file)?;
         let cached_attributes = HashMap::default();
+
+        eval_args.flake_compat |= requires_flake_compat;
+        if !eval_args.flake_compat {
+            eval_args.is_lambda = nix::is_lambda(&expected_file)?;
+        }
 
 
         let file = NixFile(Arc::new(RwLock::new(InnerNixFile {
             checkout,
             filename,
-            flake_compat,
             cached_attributes,
+            eval_args,
         })));
 
         if !file.path().exists() {
@@ -68,12 +72,16 @@ impl NixFile {
     }
 
     pub fn flake_compat(&self) -> bool {
-        self.0.read().unwrap().flake_compat
+        self.0.read().unwrap().eval_args.flake_compat
     }
 
-    pub fn fetch(reference: &NixFileReference, force_flake_compat: bool) -> NieResult<Self> {
+    pub fn eval_args(&self) -> EvalArgs {
+        self.0.read().unwrap().eval_args.clone()
+    }
+
+    pub fn fetch(reference: &NixFileReference, eval_args: EvalArgs) -> NieResult<Self> {
         let checkout = Checkout::create(reference.repository().clone())?;
-        checkout.file(reference.filename().cloned(), force_flake_compat)
+        checkout.file(reference.filename().cloned(), eval_args)
     }
 
     pub fn output(&self, mut attr: AttributePath, common_locations: &[AttributePath]) -> NieResult<NixOutput> {
@@ -113,11 +121,7 @@ impl NixFile {
             return Ok(*cached);
         }
 
-        let res = if self.flake_compat() {
-            nix::has_attribute_flake(&self.path(), attr)
-        } else {
-            nix::has_attribute(&self.path(), attr)
-        };
+        let res = nix::has_attribute(&self.path(), attr, &self.eval_args());
 
         if let Ok(b) = res {
             self.0.write().unwrap().cached_attributes.insert(attr.to_owned(), b);
