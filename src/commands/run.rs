@@ -28,7 +28,7 @@ impl super::Command for RunCommand {
         let default = AttributePath::common_package_locations();
         let file = NixFile::fetch(self.reference.file(), self.eval_args)?;
         let output = file.output(self.reference.attribute().clone(), &default)?;
-        output.build(false, &[])?;
+        output.build(false, &[], None)?;
         let bin_path = output.main_program()
             .ok_or_else(|| NieError::ProgramNotFound(self.reference.into()))?;
 

@@ -79,6 +79,10 @@ impl NixFile {
         self.0.read().unwrap().eval_args.clone()
     }
 
+    pub fn checkout(&self) -> Checkout {
+        self.0.read().unwrap().checkout.clone()
+    }
+
     pub fn fetch(reference: &NixFileReference, eval_args: EvalArgs) -> NieResult<Self> {
         let checkout = Checkout::create(reference.repository().clone())?;
         checkout.file(reference.filename().cloned(), eval_args)

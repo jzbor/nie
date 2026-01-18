@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -154,6 +154,88 @@ pub fn current_system() -> NieResult<String> {
         "-E",
         "builtins.currentSystem",
     ])
+}
+
+pub fn push_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
+    let mut args: VecDeque<_> =  paths.iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
+    args.push_front(remote.to_string());
+
+    exec("nix-copy-closure", args)
+}
+
+pub fn pull_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
+    let mut args: VecDeque<_> =  paths.iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
+    args.push_front(remote.to_string());
+    args.push_front("--from".to_string());
+
+    exec("nix-copy-closure", args)
+}
+
+pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, remote: &str, eval_args: &EvalArgs, extra_args: &[String])
+        -> NieResult<Vec<PathBuf>> {
+    push_paths(inputs, remote)?;
+
+    let path_str = path.to_string_lossy().to_string();
+    let mut args = vec![
+        remote,
+        "nix-build",
+        "--log-format", "bar",
+    ];
+
+    if eval_args.flake_compat {
+        args.push("--expr");
+        args.push(include_str!("./nix/compat.nix"));
+
+        args.push("--arg");
+        args.push("path");
+        args.push(path_str.as_str());
+    } else {
+        args.push(path_str.as_str());
+    }
+
+    let attribute_str = attribute.to_string();
+    if !attribute.is_toplevel() {
+        args.push("-A");
+        args.push(&attribute_str);
+    }
+
+    args.push("--no-out-link");
+
+    for (k, v) in eval_args.nix_options() {
+        args.push("--option");
+        args.push(k);
+        args.push(v);
+    }
+
+    for (key, value) in eval_args.expression_args() {
+        args.push("--arg");
+        args.push(key);
+        args.push(value);
+    }
+
+    args.extend(extra_args.iter().map(|s| s.as_str()));
+
+    let out = exec_output("ssh", &args)?;
+    let paths: Vec<_> = out.lines()
+        .map(PathBuf::from)
+        .collect();
+    let path_refs: Vec<_> = paths.iter()
+        .map(|p| p.as_path())
+        .collect();
+
+    pull_paths(&path_refs, remote)?;
+
+    paths.into_iter()
+        .map(|p| if p.exists() {
+            Ok(p)
+        } else {
+            Err(NieError::BuiltPathMissing(p.to_string_lossy().into()))
+        })
+        .collect::<NieResult<_>>()
 }
 
 pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval_args: &EvalArgs, extra_args: &[String])

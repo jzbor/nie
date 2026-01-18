@@ -46,7 +46,7 @@ impl NixOutput {
     }
 
     pub fn fetch_and_build_all(refs: &[NixReference], common_locations: &[AttributePath], allow_out_links: bool,
-            eval_args: &EvalArgs, extra_args: &[String]) -> NieResult<Vec<Vec<PathBuf>>> {
+            eval_args: &EvalArgs, extra_args: &[String], remote: Option<&str>) -> NieResult<Vec<Vec<PathBuf>>> {
         let repo_refs = refs.iter().map(|s| s.repository()).cloned();
         let filenames = refs.iter().map(|s| s.filename().cloned());
         let attributes = refs.iter().map(|s| s.attribute()).cloned();
@@ -55,9 +55,8 @@ impl NixOutput {
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), eval_args.clone())?;
         let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), common_locations)?;
 
-
         outputs.into_iter()
-            .map(|o| o.build(allow_out_links, extra_args)
+            .map(|o| o.build(allow_out_links, extra_args, remote)
                 .and_then(|p| if p.is_empty() {
                     Err(NieError::NoOutputPath(o.reference().into()))
                 } else {
@@ -76,7 +75,7 @@ impl NixOutput {
     }
 
     pub fn drv_name(&self) -> NieResult<String> {
-        let paths = self.build(false, &[])?;
+        let paths = self.build(false, &[], None)?;
         let path = paths.first()
             .ok_or(NieError::NoOutputPath(Box::new(self.reference())))?;
 
@@ -110,7 +109,7 @@ impl NixOutput {
         self.file().reference().with_attribute(self.attr())
     }
 
-    pub fn build(&self, allow_out_links: bool, extra_args: &[String]) -> NieResult<Vec<PathBuf>> {
+    pub fn build(&self, allow_out_links: bool, extra_args: &[String], remote: Option<&str>) -> NieResult<Vec<PathBuf>> {
         let attr = self.attr().clone();
         let path = self.file().path();
 
@@ -120,11 +119,20 @@ impl NixOutput {
 
         if self.file().flake_compat() {
             inform(&format!("Building {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
+        } else if let Some(remote) = remote {
+            inform(&format!("Building {} from {} on {}", attr.to_string_user(), path.to_string_lossy(), remote));
         } else {
             inform(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
         };
 
-        let paths = nix::build(&path, &attr, allow_out_links, &self.file().eval_args(), extra_args)?;
+        let paths = if let Some(remote) = remote {
+            let checkout = self.file().checkout();
+            let inputs = vec!(checkout.path().as_path());
+            nix::build_remote(&inputs, &path, &attr, remote, &self.file().eval_args(), extra_args)?
+        } else {
+            nix::build(&path, &attr, allow_out_links, &self.file().eval_args(), extra_args)?
+        };
+
         self.0.write().unwrap().built_paths = Some(paths.clone());
         Ok(paths)
     }
