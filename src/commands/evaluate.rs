@@ -18,6 +18,7 @@ pub struct EvaluateCommand {
     extra_args: Vec<String>,
 }
 
+
 impl super::Command for EvaluateCommand {
     fn exec(self) -> NieResult<()> {
         let checkout = Checkout::create(self.reference.repository().clone())?;

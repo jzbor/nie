@@ -23,6 +23,7 @@ pub struct DevelopCommand {
     extra_args: Vec<String>,
 }
 
+
 impl super::Command for DevelopCommand {
     fn exec(self) -> NieResult<()> {
         let file = NixFile::fetch(self.reference.file(), self.eval_args)?;

@@ -11,8 +11,9 @@ pub struct BuildCommand {
     #[arg(default_value = "./.")]
     refs: Vec<NixReference>,
 
-    #[arg(long)]
-    on: Option<String>,
+    /// Build derivations on a remote machine
+    #[arg(long("on"))]
+    remote: Option<String>,
 
     #[clap(flatten)]
     eval_args: EvalArgs,
@@ -26,7 +27,7 @@ impl super::Command for BuildCommand {
     fn exec(self) -> NieResult<()> {
         let default = AttributePath::common_package_locations();
         let paths: Vec<_> = NixOutput::fetch_and_build_all(&self.refs, &default, true, &self.eval_args,
-                                                            &self.extra_args, self.on.as_deref())?
+                                                            &self.extra_args, self.remote.as_deref())?
             .into_iter()
             .flatten()
             .collect();

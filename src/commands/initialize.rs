@@ -12,18 +12,21 @@ use crate::store::checkout::Checkout;
 
 #[derive(clap::Args)]
 pub struct InitializeCommand {
-    /// Nix references to fetch and build
+    /// Nix reference to use as a template
     reference: NixReference,
 
+    /// Target directory to initialize
     #[arg(default_value = ".")]
     destination: PathBuf,
 
+    /// Use reference repository directly as template
     #[arg(short, long)]
     direct: bool,
 
     #[clap(flatten)]
     eval_args: EvalArgs,
 }
+
 
 impl super::Command for InitializeCommand {
     fn exec(self) -> NieResult<()> {

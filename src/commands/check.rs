@@ -20,6 +20,7 @@ pub struct CheckCommand {
     #[arg(short, long)]
     keep_going: bool,
 
+    /// Also build packages as part of checks
     #[arg(short, long)]
     packages: bool,
 
