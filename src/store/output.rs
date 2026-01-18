@@ -117,13 +117,11 @@ impl NixOutput {
             return Ok(paths.clone())
         }
 
-        if self.file().flake_compat() {
-            inform(&format!("Building {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
-        } else if let Some(remote) = remote {
-            inform(&format!("Building {} from {} on {}", attr.to_string_user(), path.to_string_lossy(), remote));
-        } else {
-            inform(&format!("Building {} from {}", attr.to_string_user(), path.to_string_lossy()));
-        };
+        inform(&format!("Building {} from {}{}{}",
+                attr.to_string_user(),
+                path.to_string_lossy(),
+                if self.file().flake_compat() { " with flake_compat" } else { "" },
+                if let Some(remote) = remote { format!(" on {}", remote) } else { String::new() }));
 
         let paths = if let Some(remote) = remote {
             let checkout = self.file().checkout();

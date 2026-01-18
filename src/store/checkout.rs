@@ -64,17 +64,6 @@ impl Checkout {
             .collect()
     }
 
-    pub fn push_to_remote(&self, remote: &str) -> NieResult<()> {
-        nix::push_paths(&[self.path()], remote)
-    }
-
-    pub fn push_all_to_remote(checkouts: &[Self], remote: &str) -> NieResult<()> {
-        let paths: Vec<_> = checkouts.iter()
-            .map(|c| c.path().as_path())
-            .collect();
-        nix::push_paths(&paths, remote)
-    }
-
     pub fn repository(&self) -> &RepositoryReference {
         &self.0.repository
     }
