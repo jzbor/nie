@@ -20,6 +20,7 @@ let
   flake = import flake-compat {
     src = path;
     copySourceTreeToStore = false;  # paths already in store
+    useBuiltinsFetchTree = true;
   };
   # items = foldl' (acc: elem: acc // elem) {} (map (name: {
   #   ${name} = (discover flake.outputs.${name} 1);

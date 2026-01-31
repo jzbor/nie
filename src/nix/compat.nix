@@ -8,6 +8,7 @@ let
   flake = import flake-compat {
     src = path;
     copySourceTreeToStore = false;  # paths already in store
+    useBuiltinsFetchTree = true;
   };
 in
   flake.outputs
