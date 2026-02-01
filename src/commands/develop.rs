@@ -15,6 +15,10 @@ pub struct DevelopCommand {
     #[arg(short, long)]
     command: Option<String>,
 
+    /// Run $EDITOR inside the shell
+    #[arg(short, long)]
+    editor: bool,
+
     #[clap(flatten)]
     eval_args: EvalArgs,
 
@@ -28,6 +32,7 @@ impl super::Command for DevelopCommand {
     fn exec(self) -> NieResult<()> {
         let file = NixFile::fetch(self.reference.file(), self.eval_args)?;
         let output = file.output(self.reference.attribute().clone(), &AttributePath::common_dev_shell_locations())?;
-        output.enter_dev_shell(self.command, &self.extra_args)
+        let command = if self.editor { Some(String::from("$EDITOR")) } else { self.command };
+        output.enter_dev_shell(command, &self.extra_args)
     }
 }
