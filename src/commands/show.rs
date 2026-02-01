@@ -40,13 +40,12 @@ impl super::Command for ShowCommand {
             let attributes = file.attributes(self.depth, self.reject_broken)?;
             announce(&format!("Outputs in \"{}\":", reference));
             for attr in attributes {
-                if file.flake_compat() && attr.len() > 1 && attr.first().map(|c| c == "outputs").unwrap_or_default() {
-                    continue;
-                } else if !reference.attribute().is_toplevel() &&
-                        !(attr.is_indirect_child(reference.attribute())
-                            || reference.attribute().is_indirect_child(&attr)
-                            || reference.attribute() == &attr){
-                    continue;
+                if (file.flake_compat() && attr.len() > 1 && attr.first().map(|c| c == "outputs").unwrap_or_default())
+                    || !(reference.attribute().is_toplevel()
+                        ||attr.is_indirect_child(reference.attribute())
+                        || reference.attribute().is_indirect_child(&attr)
+                        || reference.attribute() == &attr){
+                        continue;
                 }
 
                 if self.short {
