@@ -403,6 +403,43 @@ pub fn dev_shell(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, c
     exec("nix-shell", &args)
 }
 
+pub fn create_root(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, root: &Path) -> NieResult<String> {
+    let path_str = path.to_string_lossy().to_string();
+    let mut args = vec![
+        "-A".to_string(),
+        attribute.to_string(),
+    ];
+
+    if eval_args.flake_compat {
+        args.push("--expr".to_owned());
+        args.push(include_str!("./nix/compat.nix").to_owned());
+
+        args.push("--arg".to_owned());
+        args.push("path".to_owned());
+        args.push(path_str.clone());
+    } else {
+        args.push(path_str);
+    }
+
+    for (key, value) in eval_args.expression_args() {
+        args.push("--arg".to_owned());
+        args.push(key.to_owned());
+        args.push(value.to_owned());
+    }
+
+    for (k, v) in eval_args.nix_options() {
+        args.push("--option".to_owned());
+        args.push((*k).to_owned());
+        args.push((*v).to_owned());
+    }
+
+    args.push(String::from("--indirect"));
+    args.push(String::from("--add-root"));
+    args.push(root.to_string_lossy().to_string());
+
+    exec_output("nix-instantiate", &args)
+}
+
 fn serialize_args(args: &BTreeMap<String, String>) -> String {
     let mut serialized_args = String::new();
     serialized_args.push_str("{ ");

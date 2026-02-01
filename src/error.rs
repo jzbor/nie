@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::time::SystemTimeError;
 use std::{io, process};
 
 use colored::Colorize;
@@ -60,6 +61,9 @@ pub enum NieError {
 
     #[error("No checks found for {0}")]
     NoChecksFound(Box<NixReference>),
+
+    #[error("Unable to calculate time: {0}")]
+    SystemTime(#[from] SystemTimeError),
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {

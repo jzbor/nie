@@ -1,5 +1,5 @@
 use std::iter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use crate::attribute_path::AttributePath;
@@ -156,4 +156,13 @@ impl NixOutput {
         inform(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
         nix::dev_shell(&path, &attr, &self.file().eval_args(), command, extra_args)
     }
+
+    pub fn create_drv_gc_root(&self, root: &Path) -> NieResult<()> {
+        let attr = self.attr().clone();
+        let path = self.file().path();
+
+        inform(&format!("Creating gc root {} for derivation of {}", root.to_string_lossy(), attr.to_string()));
+        nix::create_root(&path, &attr, &self.file().eval_args(), &root).map(|_| ())
+    }
+
 }

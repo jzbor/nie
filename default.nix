@@ -59,4 +59,11 @@ in rec {
     # Additional tools
     nativeBuildInputs = [];
   });
+  devShells.second = pkgs.mkShell {
+    inherit (packages.default) name;
+
+    nativeBuildInputs = with pkgs; [
+      hello
+    ];
+  };
 }
