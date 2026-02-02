@@ -84,7 +84,7 @@ struct EvalArgs {
 
     /// Additional arguments to pass to the expression at the toplevel
     #[arg(long("arg"), num_args = 2)]
-    args: Vec<Vec<String>>,
+    add_eval_args: Vec<Vec<String>>,
 
     /// Pass 'system' argument to the expression
     ///
@@ -104,7 +104,7 @@ impl EvalArgs {
     }
 
     fn expression_args(&self) -> Vec<(&str, &str)> {
-        self.args.iter()
+        self.add_eval_args.iter()
             .flat_map(|v| v.as_chunks::<2>().0.first())
             .map(|s| (s[0].as_str(), s[1].as_str()))
             .collect()

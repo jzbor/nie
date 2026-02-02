@@ -29,6 +29,7 @@ impl Checkout {
 
         use RepositoryLocation::*;
         let path = match repository.location() {
+            LocalFile(file) => nix::fetch_local(file, repository.checkout_args())?,
             Git(url) => nix::fetch_git(url, repository.checkout_args())?,
             Tarball(url) => nix::fetch_tarball(url, repository.checkout_args())?,
             Codeberg(owner, repo, gitref) => nix::fetch_codeberg(owner, repo,

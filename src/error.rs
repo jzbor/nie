@@ -64,6 +64,9 @@ pub enum NieError {
 
     #[error("Unable to calculate time: {0}")]
     SystemTime(#[from] SystemTimeError),
+
+    #[error("Missing environment variable \"{0}\"")]
+    EnvVarMissing(&'static str),
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {

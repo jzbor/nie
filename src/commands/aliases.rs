@@ -1,8 +1,9 @@
+use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::str::FromStr;
 
-use crate::aliases;
+use crate::{aliases, nix};
 use crate::error::{NieError, NieResult};
 use crate::location::NixReference;
 
@@ -20,6 +21,10 @@ pub struct AliasesCommand {
     /// List all considered files containing aliases
     #[arg(long, exclusive = true)]
     files: bool,
+
+    /// Open aliases file in $EDITOR
+    #[arg(long, exclusive = true)]
+    edit: bool,
 
     /// Arguments passed to command
     #[arg(last = true)]
@@ -46,6 +51,11 @@ impl super::Command for AliasesCommand {
             for file in aliases::alias_files() {
                 println!("{}", file.to_string_lossy());
             }
+        } else if self.edit {
+            let path = aliases::user_alias_file()?;
+            let editor = env::var("EDITOR")
+                .map_err(|_| NieError::EnvVarMissing("EDITOR"))?;
+            nix::exec(&editor, &[&path.to_string_lossy().to_string()])?;
         } else {
             for (k, v) in aliases::load_aliases()? {
                 println!("{} {}", k, v);

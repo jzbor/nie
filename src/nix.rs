@@ -9,6 +9,24 @@ use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 
 
+pub fn fetch_local(path: &Path, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
+    let path_str = if let Some(canon) = args.get("canonicalize") && canon.trim() == "false" {
+        path.to_string_lossy().to_string()
+    } else {
+        path.canonicalize()?.to_string_lossy().to_string()
+    };
+    let out = exec_output("nix-store", [
+        "--add",
+        path_str.as_str(),
+        "--log-format", "bar",
+    ])?;
+
+    match out.lines().next() {
+        Some(line) => Ok(PathBuf::from(line)),
+        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
+    }
+}
+
 pub fn fetch_git(url: &str, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
     let out = exec_output("nix-instantiate", [
         "--eval",

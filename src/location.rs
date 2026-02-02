@@ -31,6 +31,7 @@ pub struct RepositoryReference {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepositoryLocation {
     Git(String),
+    LocalFile(PathBuf),
     Tarball(String),
     Codeberg(String, String, Option<String>),
     Github(String, String, Option<String>),
@@ -165,6 +166,8 @@ impl FromStr for RepositoryLocation {
         } else if (s.starts_with("https://") || s.starts_with("http://"))
             && (s.ends_with(".tar.gz") || s.ends_with(".tag.xz") || s.ends_with(".tag.bz2")) {
             Ok(RepositoryLocation::Tarball(s.to_owned()))
+        } else if let Some(path) = s.strip_prefix("file://") {
+            Ok(RepositoryLocation::LocalFile(PathBuf::from(path)))
         } else {
             Ok(RepositoryLocation::Git(s.to_owned()))
         }
@@ -215,6 +218,7 @@ impl Display for RepositoryLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use RepositoryLocation::*;
         match self {
+            LocalFile(path) => write!(f, "file://{}", path.to_string_lossy()),
             Git(url) | Tarball(url) => write!(f, "{}", url),
             Codeberg(owner, repo, gitref) => write!(f, "codeberg://{}/{}{}", owner, repo,
                 gitref.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
