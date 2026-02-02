@@ -75,11 +75,10 @@ struct EvalArgs {
     #[arg(long("nix-option"), num_args = 2)]
     nix_options: Vec<Vec<String>>,
 
-    /// `true` if the targeted expression is not a lambda at the toplevel
+    /// `true` if the targeted expression is a lambda at the toplevel
     ///
     /// Calculated on the fly.
-    // #[arg(skip)]
-    #[arg(long)]
+    #[arg(skip)]
     is_lambda: bool,
 
     /// Additional arguments to pass to the expression at the toplevel
