@@ -13,5 +13,7 @@ let
   in  if !result.success
       then "<broken>"
       else result.value;
+  imported = import path;
+  fullImported = if isSet imported then imported else imported {};
 in
-  toJSON (discover (import path {}) 0)
+  toJSON (discover fullImported 0)
