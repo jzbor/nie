@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Display;
+use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -168,6 +169,8 @@ impl FromStr for RepositoryLocation {
             Ok(RepositoryLocation::Tarball(s.to_owned()))
         } else if let Some(path) = s.strip_prefix("file://") {
             Ok(RepositoryLocation::LocalFile(PathBuf::from(path)))
+        } else if PathBuf::from(s).is_dir() && !PathBuf::from(s).join(".git").is_dir() {
+            Ok(RepositoryLocation::LocalFile(PathBuf::from(s)))
         } else {
             Ok(RepositoryLocation::Git(s.to_owned()))
         }
