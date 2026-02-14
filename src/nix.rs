@@ -10,11 +10,16 @@ use crate::error::{NieError, NieResult};
 
 
 pub fn fetch_local(path: &Path, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
-    let path_str = if let Some(canon) = args.get("canonicalize") && canon.trim() == "false" {
-        path.to_string_lossy().to_string()
-    } else {
-        path.canonicalize()?.to_string_lossy().to_string()
-    };
+    let canonicalized = path.canonicalize()?;
+    if canonicalized.starts_with("/nix/store") {
+        return Ok(canonicalized)
+    }
+
+    if let Some(no_copy) = args.get("nocopy") && no_copy.trim().parse::<bool>().unwrap_or_default() {
+        return Ok(path.to_path_buf())
+    }
+
+    let path_str = path.to_string_lossy().to_string();
     let out = exec_output("nix-store", [
         "--add",
         path_str.as_str(),
