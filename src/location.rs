@@ -222,7 +222,7 @@ impl Display for RepositoryLocation {
         use RepositoryLocation::*;
         match self {
             LocalFile(path) => write!(f, "file://{}", path.to_string_lossy()),
-            Git(url) | Tarball(url) => write!(f, "{}", url),
+            Git(url) | Tarball(url) => write!(f, "git://{}", url),
             Codeberg(owner, repo, gitref) => write!(f, "codeberg://{}/{}{}", owner, repo,
                 gitref.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
             Github(owner, repo, branch) => write!(f, "github://{}/{}{}", owner, repo,
