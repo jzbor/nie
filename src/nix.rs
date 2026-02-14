@@ -242,7 +242,6 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
 
     args.extend(extra_args.iter().map(|s| s.as_str()));
 
-    eprintln!("before ssh");
     let out = exec_output("ssh", &args)?;
     let paths: Vec<_> = out.lines()
         .map(PathBuf::from)
@@ -250,7 +249,6 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
     let path_refs: Vec<_> = paths.iter()
         .map(|p| p.as_path())
         .collect();
-    eprintln!("after ssh");
 
     pull_paths(&path_refs, remote)?;
 
@@ -305,7 +303,15 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval
 
     args.extend(extra_args.iter().map(|s| s.as_str()));
 
-    let out = exec_output("nix-build", &args)?;
+    let command = if exec_quiet("nom-build", ["--version"]).is_ok() {
+        args.push("--log-format");
+        args.push("internal-json");
+        "nom-build"
+    } else {
+        "nix-build"
+    };
+
+    let out = exec_output(command, &args)?;
     out.lines()
         .map(PathBuf::from)
         .map(|p| if p.exists() {
@@ -509,6 +515,22 @@ pub fn exec_output(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>)
         Err(NieError::ExternalCommand(cmd.to_owned(), code))
     } else {
         Ok(String::from_utf8_lossy(&output.stdout).into())
+    }
+}
+
+pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<()> {
+    let status = process::Command::new(cmd)
+        .args(args)
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()?;
+
+    if !status.success() {
+        let code = status.code().unwrap_or(1);
+        Err(NieError::ExternalCommand(cmd.to_owned(), code))
+    } else {
+        Ok(())
     }
 }
 
