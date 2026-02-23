@@ -7,7 +7,7 @@ use crate::store::checkout::Checkout;
 #[derive(clap::Args)]
 pub struct EvaluateCommand {
     /// Nix references to fetch and build
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     reference: NixReference,
 
     #[clap(flatten)]

@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::SystemTime;
 
 use crate::interaction::inform;
@@ -18,7 +19,7 @@ const DEV_SHELL_ROOT: &str = ".nie/dev-shell";
 #[derive(clap::Args)]
 pub struct DevelopCommand {
     /// Nix references to fetch and add to shell
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     reference: NixReference,
 
     /// Run COMMAND inside the shell
@@ -28,6 +29,10 @@ pub struct DevelopCommand {
     /// Run $EDITOR inside the shell
     #[arg(short, long)]
     editor: bool,
+
+    /// Use local shell.nix as source
+    #[arg(short, long)]
+    local: bool,
 
     /// Create a garbage collection root for the devShell and exit
     #[arg(long)]
@@ -56,15 +61,21 @@ impl super::Command for DevelopCommand {
             return unpin();
         }
 
-        let file = NixFile::fetch(self.reference.file(), self.eval_args.clone())?;
-        let output = file.output(self.reference.attribute().clone(), &AttributePath::common_dev_shell_locations())?;
+        let reference = if self.local {
+            NixReference::from_str("file://.#file=shell.nix#nocopy=true")?
+        } else {
+            self.reference
+        };
+
+        let file = NixFile::fetch(reference.file(), self.eval_args.clone())?;
+        let output = file.output(reference.attribute().clone(), &AttributePath::common_dev_shell_locations())?;
         let command = if self.editor { Some(String::from("$EDITOR")) } else { self.command };
 
         if self.pin {
             return pin(&output);
         }
 
-        if self.reference.attribute().is_toplevel()
+        if reference.attribute().is_toplevel()
                 && !self.no_pinned
                 && fs::exists(DEV_SHELL_DRV_ROOT)? {
             let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;

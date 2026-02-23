@@ -10,7 +10,7 @@ use crate::location::NixReference;
 #[derive(clap::Args)]
 pub struct ShowCommand {
     /// Nix references to fetch and show
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     refs: Vec<NixReference>,
 
     /// Maximal depth to search for

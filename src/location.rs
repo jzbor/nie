@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fmt::Display;
-use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -75,7 +74,7 @@ impl RepositoryReference {
         &self.checkout_args
     }
 
-    pub fn with_file(&self, filename: Option<PathBuf>) -> NixFileReference {
+    pub fn with_filename(&self, filename: Option<PathBuf>) -> NixFileReference {
         NixFileReference {
             repository: self.clone(),
             filename

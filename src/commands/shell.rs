@@ -9,7 +9,7 @@ use crate::store::output::NixOutput;
 #[derive(clap::Args)]
 pub struct ShellCommand {
     /// Nix references to fetch and add to shell
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     refs: Vec<NixReference>,
 
     /// Run COMMAND inside the shell

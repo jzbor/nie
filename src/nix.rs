@@ -19,7 +19,7 @@ pub fn fetch_local(path: &Path, args: &BTreeMap<String, String>) -> NieResult<Pa
         return Ok(path.to_path_buf())
     }
 
-    let path_str = path.to_string_lossy().to_string();
+    let path_str = canonicalized.to_string_lossy().to_string();
     let out = exec_output("nix-store", [
         "--add",
         path_str.as_str(),

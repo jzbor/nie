@@ -11,7 +11,7 @@ use crate::{EvalArgs, nix};
 #[derive(clap::Args)]
 pub struct RunCommand {
     /// Nix references to fetch and add to shell
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     reference: NixReference,
 
     #[clap(flatten)]

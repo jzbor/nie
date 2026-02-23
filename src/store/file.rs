@@ -31,7 +31,7 @@ pub struct AttributeIterator<'a> {
 
 impl NixFile {
     pub fn new(checkout: Checkout, filename: Option<PathBuf>, mut eval_args: EvalArgs) -> NieResult<Self> {
-        let key = (checkout.repository().with_file(filename.clone()), eval_args.clone());
+        let key = (checkout.repository().with_filename(filename.clone()), eval_args.clone());
         if let Some(file) = FILE_REGISTRY.lookup(&key) {
             return Ok(file);
         }
@@ -117,7 +117,7 @@ impl NixFile {
 
     pub fn reference(&self) -> NixFileReference {
         let filename = self.0.read().unwrap().filename.clone();
-        self.0.read().unwrap().checkout.repository().with_file(filename)
+        self.0.read().unwrap().checkout.repository().with_filename(filename)
     }
 
     pub fn has_attribute(&self, attr: &AttributePath) -> NieResult<bool> {

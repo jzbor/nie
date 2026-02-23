@@ -161,8 +161,8 @@ impl NixOutput {
         let attr = self.attr().clone();
         let path = self.file().path();
 
-        inform(&format!("Creating gc root {} for derivation of {}", root.to_string_lossy(), attr.to_string()));
-        nix::create_root(&path, &attr, &self.file().eval_args(), &root).map(|_| ())
+        inform(&format!("Creating gc root {} for derivation of {}", root.to_string_lossy(), attr));
+        nix::create_root(&path, &attr, &self.file().eval_args(), root).map(|_| ())
     }
 
 }

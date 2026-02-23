@@ -13,7 +13,7 @@ use crate::store::checkout::Checkout;
 #[derive(clap::Args)]
 pub struct CheckCommand {
     /// Nix reference to fetch and check
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     reference: NixReference,
 
     /// Run all checks regardless of failing ones

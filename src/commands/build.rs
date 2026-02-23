@@ -8,7 +8,7 @@ use crate::store::output::NixOutput;
 #[derive(clap::Args)]
 pub struct BuildCommand {
     /// Nix references to fetch and build
-    #[arg(default_value = "./.")]
+    #[arg(default_value = ".")]
     refs: Vec<NixReference>,
 
     /// Build derivations on a remote machine
