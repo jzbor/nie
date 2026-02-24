@@ -12,8 +12,8 @@ use crate::store::checkout::Checkout;
 
 #[derive(clap::Args)]
 pub struct InitializeCommand {
-    /// Nix reference to use as a template
-    reference: NixReference,
+    #[clap(flatten)]
+    template_type: TemplateType,
 
     /// Target directory to initialize
     #[arg(default_value = ".")]
@@ -27,17 +27,35 @@ pub struct InitializeCommand {
     eval_args: EvalArgs,
 }
 
+#[derive(clap::Args, Clone)]
+#[group(required = true, multiple = false)]
+struct TemplateType {
+    /// Nix reference to use as a template
+    reference: Option<NixReference>,
+
+    /// Create a shell.nix file.
+    #[arg(short, long)]
+    shell_nix: bool,
+}
+
 
 impl super::Command for InitializeCommand {
     fn exec(self) -> NieResult<()> {
         let common = AttributePath::common_template_locations();
+        let reference = if let Some(reference) = self.template_type.reference {
+            reference
+        } else if self.template_type.shell_nix {
+            return init_shell_nix(&self.destination);
+        } else {
+            panic!("Invalid template type");
+        };
 
-        let checkout = Checkout::create(self.reference.repository().clone())?;
+        let checkout = Checkout::create(reference.repository().clone())?;
         let template = if self.direct {
             checkout.path().to_owned()
         } else {
-            let file = checkout.file(self.reference.filename().cloned(), self.eval_args)?;
-            let mut output = file.output(self.reference.attribute().clone(), &common)?;
+            let file = checkout.file(reference.filename().cloned(), self.eval_args)?;
+            let mut output = file.output(reference.attribute().clone(), &common)?;
 
             if file.has_attribute(&output.attr().child("path".to_owned()))? {
                 output = file.output(output.attr().child("path".to_owned()), &common)?;
@@ -47,12 +65,20 @@ impl super::Command for InitializeCommand {
                 .lines()
                 .next()
                 .map(PathBuf::from)
-                .ok_or_else(|| NieError::NoOutputPath(self.reference.into()))?
+                .ok_or_else(|| NieError::NoOutputPath(reference.into()))?
         };
 
         inform(&format!("Copying {} to {}", template.to_string_lossy(), self.destination.to_string_lossy()));
         copy(&template, &self.destination, true)
     }
+}
+
+fn init_shell_nix(parent: &Path) -> Result<(), NieError> {
+    let content = include_str!("../nix/template-shell.nix");
+    let path = parent.join("shell.nix");
+    fs::write(&path, content.as_bytes())?;
+    inform(&format!("Create new shell file {}", path.to_string_lossy()));
+    Ok(())
 }
 
 fn copy(from: &Path, to: &Path, toplevel: bool) -> NieResult<()> {
