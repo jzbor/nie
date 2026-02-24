@@ -52,18 +52,4 @@ in rec {
     statix = cfLib.mkStatixCheck { src = ./.; };
     deadnix = cfLib.mkDeadnixCheck { src = ./.; };
   };
-
-  devShells.default = craneLib.devShell (commonArgs // {
-    inherit (packages.default) name;
-
-    # Additional tools
-    nativeBuildInputs = [];
-  });
-  devShells.second = pkgs.mkShell {
-    inherit (packages.default) name;
-
-    nativeBuildInputs = with pkgs; [
-      hello
-    ];
-  };
 }

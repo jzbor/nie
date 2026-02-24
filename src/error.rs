@@ -67,6 +67,9 @@ pub enum NieError {
 
     #[error("Missing environment variable \"{0}\"")]
     EnvVarMissing(&'static str),
+
+    #[error("Pinned shell points to unsafe path (\"{0}\")")]
+    PinnedShellNotInStore(String),
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {

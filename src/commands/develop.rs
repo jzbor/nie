@@ -7,7 +7,7 @@ use crate::interaction::inform;
 use crate::store::output::NixOutput;
 use crate::{EvalArgs, nix};
 use crate::attribute_path::AttributePath;
-use crate::error::NieResult;
+use crate::error::{NieError, NieResult};
 use crate::store::file::NixFile;
 use crate::location::NixReference;
 
@@ -141,13 +141,17 @@ fn pin(output: &NixOutput) -> NieResult<()> {
 }
 
 fn auto(command: DevelopCommand) -> NieResult<()> {
+    // Return if already in a Nix shell
+    if env::var("IN_NIX_SHELL").is_ok() {
+        return Ok(())
+    }
     // Return if no local instantiation exists
     if !fs::exists(DEV_SHELL_DRV_ROOT)? {
         return Ok(())
     }
-    // Return if already in a Nix shell
-    if env::var("IN_NIX_SHELL").is_ok() {
-        return Ok(())
+    let canon = fs::canonicalize(DEV_SHELL_DRV_ROOT)?;
+    if !canon.starts_with("/nix/store/") {
+        return Err(NieError::PinnedShellNotInStore(canon.to_string_lossy().to_string()))
     }
 
     let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
