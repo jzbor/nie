@@ -41,6 +41,7 @@ in rec {
       installShellCompletion completions/nie.{bash,fish,zsh}
     '';
   });
+  packages.npins = pkgs.npins;
 
   checks = {
     default = checks.package;

@@ -22,9 +22,9 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "01bc1d404a51a0a07e9d8759cd50a7903e218c82",
-      "url": "https://github.com/ipetkov/crane/archive/01bc1d404a51a0a07e9d8759cd50a7903e218c82.tar.gz",
-      "hash": "sha256-8qxEFpj4dVmIuPn9j9z6NTbU+hrcGjBOvaxTzre5HmM="
+      "revision": "3d3de3313e263e04894f284ac18177bd26169bad",
+      "url": "https://github.com/ipetkov/crane/archive/3d3de3313e263e04894f284ac18177bd26169bad.tar.gz",
+      "hash": "sha256-9bCDuUzpwJXcHMQYMS1yNuzYMmKO/CCwCexpjWOl62I="
     },
     "nixpkgs": {
       "type": "Git",
@@ -35,9 +35,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "3e2499d5539c16d0d173ba53552a4ff8547f4539",
-      "url": "https://github.com/nixos/nixpkgs/archive/3e2499d5539c16d0d173ba53552a4ff8547f4539.tar.gz",
-      "hash": "sha256-QEhk0eXgyIqTpJ/ehZKg9IKS7EtlWxF3N7DXy42zPfU="
+      "revision": "2fc6539b481e1d2569f25f8799236694180c0993",
+      "url": "https://github.com/nixos/nixpkgs/archive/2fc6539b481e1d2569f25f8799236694180c0993.tar.gz",
+      "hash": "sha256-0MAd+0mun3K/Ns8JATeHT1sX28faLII5hVLq0L3BdZU="
     }
   },
   "version": 7
