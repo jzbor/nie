@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::SystemTime;
@@ -12,8 +12,8 @@ use crate::store::file::NixFile;
 use crate::location::NixReference;
 
 
-const DEV_SHELL_DRV_ROOT: &str = ".nie/dev-shell.drv";
-const DEV_SHELL_ROOT: &str = ".nie/dev-shell";
+const DEV_SHELL_DRV_ROOT: &str = ".nie-dev-shell/drv";
+const DEV_SHELL_ROOT: &str = ".nie-dev-shell/path";
 
 
 #[derive(clap::Args)]
@@ -21,6 +21,12 @@ pub struct DevelopCommand {
     /// Nix references to fetch and add to shell
     #[arg(default_value = ".")]
     reference: NixReference,
+
+    /// Automatically enter development shell if local instantiation (see --pin) is found
+    ///
+    /// Do nothing otherwise.
+    #[arg(long)]
+    auto: bool,
 
     /// Run COMMAND inside the shell
     #[arg(short, long)]
@@ -59,6 +65,9 @@ impl super::Command for DevelopCommand {
     fn exec(self) -> NieResult<()> {
         if self.unpin {
             return unpin();
+        }
+        if self.auto {
+            return auto(self);
         }
 
         let reference = if self.local {
@@ -129,4 +138,19 @@ fn pin(output: &NixOutput) -> NieResult<()> {
     output.create_drv_gc_root(&PathBuf::from(DEV_SHELL_DRV_ROOT))?;
 
     Ok(())
+}
+
+fn auto(command: DevelopCommand) -> NieResult<()> {
+    // Return if no local instantiation exists
+    if !fs::exists(DEV_SHELL_DRV_ROOT)? {
+        return Ok(())
+    }
+    // Return if already in a Nix shell
+    if env::var("IN_NIX_SHELL").is_ok() {
+        return Ok(())
+    }
+
+    let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
+    inform(&format!("Automatically entering dev shell from local gc root {} ({} days old)", DEV_SHELL_DRV_ROOT, link_age.as_secs() / (24 * 60 * 60)));
+    nix::dev_shell(&PathBuf::from(DEV_SHELL_DRV_ROOT), &AttributePath::default(), &command.eval_args, None, &command.extra_args)
 }
