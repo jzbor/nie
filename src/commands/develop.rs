@@ -41,15 +41,15 @@ pub struct DevelopCommand {
     shell_nix: bool,
 
     /// Create a garbage collection root for the devShell and exit
-    #[arg(long)]
+    #[arg(short, long)]
     pin: bool,
 
     /// Do not use pinned dev shells if found
-    #[arg(long)]
+    #[arg(short, long)]
     no_pinned: bool,
 
     /// Remove devShell gc roots
-    #[arg(long)]
+    #[arg(short, long)]
     unpin: bool,
 
     #[clap(flatten)]
@@ -86,6 +86,7 @@ impl super::Command for DevelopCommand {
 
         if reference.attribute().is_toplevel()
                 && !self.no_pinned
+                && !self.shell_nix
                 && fs::exists(DEV_SHELL_DRV_ROOT)? {
             let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
             inform(&format!("Creating dev shell from local gc root {} ({} days old)", DEV_SHELL_DRV_ROOT, link_age.as_secs() / (24 * 60 * 60)));
