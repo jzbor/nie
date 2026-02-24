@@ -38,7 +38,7 @@ pub struct DevelopCommand {
 
     /// Use local shell.nix as source
     #[arg(short, long)]
-    local: bool,
+    shell_nix: bool,
 
     /// Create a garbage collection root for the devShell and exit
     #[arg(long)]
@@ -70,7 +70,7 @@ impl super::Command for DevelopCommand {
             return auto(self);
         }
 
-        let reference = if self.local {
+        let reference = if self.shell_nix {
             NixReference::from_str("file://.#file=shell.nix#nocopy=true")?
         } else {
             self.reference
