@@ -14,7 +14,7 @@ pub struct ShowCommand {
     refs: Vec<NixReference>,
 
     /// Maximal depth to search for
-    #[arg(short, long, default_value_t = 5)]
+    #[arg(short, long, default_value_t = 3)]
     depth: u32,
 
     /// Print only the names of attributes, not their full path
