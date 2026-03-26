@@ -22,9 +22,22 @@
       },
       "branch": "master",
       "submodules": false,
-      "revision": "3d3de3313e263e04894f284ac18177bd26169bad",
-      "url": "https://github.com/ipetkov/crane/archive/3d3de3313e263e04894f284ac18177bd26169bad.tar.gz",
-      "hash": "sha256-9bCDuUzpwJXcHMQYMS1yNuzYMmKO/CCwCexpjWOl62I="
+      "revision": "3d9df76e29656c679c744968b17fbaf28f0e923d",
+      "url": "https://github.com/ipetkov/crane/archive/3d9df76e29656c679c744968b17fbaf28f0e923d.tar.gz",
+      "hash": "sha256-hy0XTQND6avzGEUFrJtYBBpFa/POiiaGBr2vpU6Y9tY="
+    },
+    "docker-nixpkgs": {
+      "type": "Git",
+      "repository": {
+        "type": "GitHub",
+        "owner": "nix-community",
+        "repo": "docker-nixpkgs"
+      },
+      "branch": "main",
+      "submodules": false,
+      "revision": "10b83cdcf12c7d37db50cd8d2c68b336881b91de",
+      "url": "https://github.com/nix-community/docker-nixpkgs/archive/10b83cdcf12c7d37db50cd8d2c68b336881b91de.tar.gz",
+      "hash": "sha256-dCcMzcKlI9hB0EL2/odCyrouVKHmi9m/K2awJGho3oc="
     },
     "nixpkgs": {
       "type": "Git",
@@ -35,9 +48,9 @@
       },
       "branch": "nixos-unstable",
       "submodules": false,
-      "revision": "2fc6539b481e1d2569f25f8799236694180c0993",
-      "url": "https://github.com/nixos/nixpkgs/archive/2fc6539b481e1d2569f25f8799236694180c0993.tar.gz",
-      "hash": "sha256-0MAd+0mun3K/Ns8JATeHT1sX28faLII5hVLq0L3BdZU="
+      "revision": "46db2e09e1d3f113a13c0d7b81e2f221c63b8ce9",
+      "url": "https://github.com/nixos/nixpkgs/archive/46db2e09e1d3f113a13c0d7b81e2f221c63b8ce9.tar.gz",
+      "hash": "sha256-4hAV26quOxdC6iyG7kYaZcM3VOskcPUrdCQd/nx8obc="
     }
   },
   "version": 7
