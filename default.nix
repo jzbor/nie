@@ -89,7 +89,7 @@ in rec {
   };
 
   devShells.default = pkgs.mkShellNoCC {
-    name = packages.default.name;
+    inherit (packages.default) name;
     packages = with pkgs; [
       npins
       nix-prefetch-docker

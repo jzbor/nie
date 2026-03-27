@@ -1,7 +1,20 @@
 on: [push]
 jobs:
+  check:
+    runs-on: codeberg-medium
+    container:
+      image: codeberg.org/jzbor/nie:latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: nie check
+        run: nie check .
+
+
   build-container:
     runs-on: codeberg-medium-lazy
+    needs: check
     steps:
       - name: Install buildah
         run: |
