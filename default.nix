@@ -49,29 +49,41 @@ in rec {
       '';
     });
 
-    nixImage = buildImageWithNix {
-      inherit (pkgs) dockerTools bashInteractive cacert coreutils curl gnutar gzip iana-etc nix openssh xz;
-
-      # We are actually going to use Git so we use the full version.
-      gitReallyMinimal = pkgs.git;
-    };
-
     nieImage = pkgs.dockerTools.buildImage {
       name = "nie";
       tag = "latest";
 
-      fromImage = packages.nixImage;
-      copyToRoot = pkgs.buildEnv {
-        name = "image-root";
-        paths = with pkgs; [
+      fromImage = buildImageWithNix {
+        inherit (pkgs) dockerTools bashInteractive cacert coreutils curl gnutar gzip iana-etc nix openssh xz;
+
+        # We are actually going to use Git so we use the full version.
+        gitReallyMinimal = pkgs.git;
+
+        extraContents = [
           packages.nie
-          bash
         ];
-        pathsToLink = [ "/bin" ];
       };
 
       config.Cmd = [ "/bin/bash" ];
     };
+
+    # nieImage = pkgs.dockerTools.buildImage {
+    #   name = "nie";
+    #   tag = "latest";
+
+    #   fromImage = packages.nixImage;
+    #   # fromImage = nix-actions-container.packages.${system}.default;
+    #   copyToRoot = pkgs.buildEnv {
+    #     name = "image-root";
+    #     paths = with pkgs; [
+    #       packages.nie
+    #       bash
+    #     ];
+    #     pathsToLink = [ "/bin" ];
+    #   };
+
+    #   config.Cmd = [ "/bin/bash" ];
+    # };
   };
 
   checks = {
