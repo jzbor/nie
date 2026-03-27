@@ -57,7 +57,7 @@ in rec {
     };
 
     nieImage = pkgs.dockerTools.buildImage {
-      inherit (packages.default) name;
+      name = "nie";
       tag = "latest";
 
       fromImage = packages.nixImage;

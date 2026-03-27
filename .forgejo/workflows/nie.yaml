@@ -1,0 +1,42 @@
+on: [push]
+jobs:
+  build-container:
+    runs-on: codeberg-medium-lazy
+    steps:
+      - name: Install buildah
+        run: |
+          apt-get update -y
+          apt-get install -y buildah ca-certificates -y
+
+      # https://gradient.moe/blog/2025-09-08-building-nixos-forgejo-actions/
+      - name: Install Lix
+        run: |
+          echo "Downloading and running Lix installer..."
+          curl -sSf -L https://install.lix.systems/lix | sh -s -- install linux --no-confirm --force --enable-flakes --init=none --extra-conf="experimental-features = nix-command flakes"
+          echo "Running Nix profile..."
+          . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+          echo "Making sure Nix is installed and on PATH..."
+          nix --version
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build image
+        run: nix --experimental-features 'nix-command flakes' build .#nieImage -o result.tar.gz
+
+      - name: Setup containerd
+        run: |
+          echo root:1:65536 | tee /etc/subuid /etc/subgid
+          [ -f /etc/containers/storage.conf ] && mv /etc/containers/storage.conf /etc/containers/storage.conf.bak || true
+          printf '[storage]\ndriver="vfs"\nrunroot="/run/containers/storage"\ngraphroot="/var/lib/containers/storage"\n' | tee /etc/containers/storage.conf
+
+      - name: Load container
+        run: |
+          env BUILDAH_ISOLATION=chroot buildah pull docker-archive:result.tar.gz
+          env BUILDAH_ISOLATION=chroot buildah tag localhost/nie:latest codeberg.org/jzbor/nie:latest
+
+      - name: Push Container
+        run: |
+          echo "$OCI_USER"
+          env BUILDAH_ISOLATION=chroot buildah push --creds "${{ secrets.OCI_USER }}:${{ secrets.OCI_TOKEN }}" codeberg.org/jzbor/nie:latest
+
