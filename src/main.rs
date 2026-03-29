@@ -17,6 +17,9 @@ mod registry;
 mod aliases;
 
 
+const ENV_TRACE_EXEC: &str = "NIE_TRACE_EXEC";
+
+
 #[derive(Parser)]
 #[command(version, about, long_about)]
 pub struct Args {

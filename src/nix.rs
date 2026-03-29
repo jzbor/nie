@@ -3,8 +3,9 @@ use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{self, Stdio};
+use std::time::Instant;
 
-use crate::EvalArgs;
+use crate::{ENV_TRACE_EXEC, EvalArgs};
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
 
@@ -493,12 +494,20 @@ fn escape_url(url: &str) -> String {
 }
 
 pub fn exec(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<()> {
+    let args: Vec<_> = args.into_iter().collect();
+    let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
     let status = process::Command::new(cmd)
-        .args(args)
+        .args(&args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .status()?;
+
+    if let Some(start_time) = start_time {
+        eprint!("{}", cmd);
+        args.into_iter().for_each(|a| eprint!(" {:?}", a.as_ref()));
+        eprintln!(": took {:?}", Instant::now() - start_time);
+    }
 
     if !status.success() {
         let code = status.code().unwrap_or(1);
@@ -509,11 +518,19 @@ pub fn exec(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Nie
 }
 
 pub fn exec_output(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<String> {
+    let args: Vec<_> = args.into_iter().collect();
+    let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
     let output = process::Command::new(cmd)
-        .args(args)
+        .args(&args)
         .stdin(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()?;
+
+    if let Some(start_time) = start_time {
+        eprint!("{}", cmd);
+        args.into_iter().for_each(|a| eprint!(" {:?}", a.as_ref()));
+        eprintln!(": took {:?}", Instant::now() - start_time);
+    }
 
     if !output.status.success() {
         let code = output.status.code().unwrap_or(1);
@@ -524,12 +541,20 @@ pub fn exec_output(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>)
 }
 
 pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<()> {
+    let args: Vec<_> = args.into_iter().collect();
+    let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
     let status = process::Command::new(cmd)
-        .args(args)
+        .args(&args)
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .stdout(Stdio::null())
         .status()?;
+
+    if let Some(start_time) = start_time {
+        eprint!("{}", cmd);
+        args.into_iter().for_each(|a| eprint!(" {:?}", a.as_ref()));
+        eprintln!(": took {:?}", Instant::now() - start_time);
+    }
 
     if !status.success() {
         let code = status.code().unwrap_or(1);
@@ -540,11 +565,19 @@ pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) 
 }
 
 pub fn exec_output_json(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<serde_json::Value> {
+    let args: Vec<_> = args.into_iter().collect();
+    let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
     let output = process::Command::new(cmd)
-        .args(args)
+        .args(&args)
         .stdin(Stdio::inherit())
         .stderr(Stdio::inherit())
         .output()?;
+
+    if let Some(start_time) = start_time {
+        eprint!("{}", cmd);
+        args.into_iter().for_each(|a| eprint!(" {:?}", a.as_ref()));
+        eprintln!(": took {:?}", Instant::now() - start_time);
+    }
 
     if !output.status.success() {
         let code = output.status.code().unwrap_or(1);
