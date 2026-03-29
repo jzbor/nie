@@ -9,6 +9,14 @@ use crate::attribute_path::AttributePath;
 use crate::error::NieError;
 
 
+const RES_PREFIX_CODEBERG: &str = "codeberg://";
+const RES_PREFIX_GIT: &str = "git://";
+const RES_PREFIX_GITHUB: &str = "github://";
+const RES_PREFIX_LOCAL: &str = "file://";
+const RES_PREFIX_TAR: &str = "https://";
+const RES_SUFFIXES_TAR: &[&str] = &[ ".tar", ".tar.gz", ".tar.xz", ".tar.bz2" ];
+
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub struct NixReference {
     file: NixFileReference,
@@ -141,7 +149,7 @@ impl FromStr for RepositoryLocation {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(rest) = s.strip_prefix("codeberg://") {
+        if let Some(rest) = s.strip_prefix(RES_PREFIX_CODEBERG) {
             let (owner, mut repo) = rest.split_once('/')
                 .ok_or(())?;
             let mut gitref = None;
@@ -152,7 +160,7 @@ impl FromStr for RepositoryLocation {
             }
 
             Ok(RepositoryLocation::Codeberg(owner.to_owned(), repo.to_owned(), gitref))
-        } else if let Some(rest) = s.strip_prefix("github://") {
+        } else if let Some(rest) = s.strip_prefix(RES_PREFIX_GITHUB) {
             let (owner, mut repo) = rest.split_once('/')
                 .ok_or(())?;
             let mut branch = None;
@@ -163,11 +171,12 @@ impl FromStr for RepositoryLocation {
             }
 
             Ok(RepositoryLocation::Github(owner.to_owned(), repo.to_owned(), branch))
-        } else if (s.starts_with("https://") || s.starts_with("http://"))
-            && (s.ends_with(".tar.gz") || s.ends_with(".tag.xz") || s.ends_with(".tag.bz2")) {
-            Ok(RepositoryLocation::Tarball(s.to_owned()))
-        } else if let Some(path) = s.strip_prefix("file://") {
+        } else if let Some(path) = s.strip_prefix(RES_PREFIX_LOCAL) {
             Ok(RepositoryLocation::LocalFile(PathBuf::from(path)))
+        } else if let Some(repo) = s.strip_prefix(RES_PREFIX_GIT) {
+            Ok(RepositoryLocation::Git(repo.to_owned()))
+        } else if s.starts_with(RES_PREFIX_TAR) && RES_SUFFIXES_TAR.iter().any(|suf| s.ends_with(suf)) {
+            Ok(RepositoryLocation::Tarball(s.to_owned()))
         } else if PathBuf::from(s).is_dir() && !PathBuf::from(s).join(".git").is_dir() {
             Ok(RepositoryLocation::LocalFile(PathBuf::from(s)))
         } else {
@@ -220,11 +229,12 @@ impl Display for RepositoryLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use RepositoryLocation::*;
         match self {
-            LocalFile(path) => write!(f, "file://{}", path.to_string_lossy()),
-            Git(url) | Tarball(url) => write!(f, "git://{}", url),
-            Codeberg(owner, repo, gitref) => write!(f, "codeberg://{}/{}{}", owner, repo,
+            LocalFile(path) => write!(f, "{}{}", RES_PREFIX_LOCAL, path.to_string_lossy()),
+            Git(url) => write!(f, "{}{}", RES_PREFIX_GIT, url),
+            Tarball(url) => write!(f, "tar://{}", url),
+            Codeberg(owner, repo, gitref) => write!(f, "{}{}/{}{}", RES_PREFIX_CODEBERG, owner, repo,
                 gitref.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
-            Github(owner, repo, branch) => write!(f, "github://{}/{}{}", owner, repo,
+            Github(owner, repo, branch) => write!(f, "{}{}/{}{}", RES_PREFIX_GITHUB, owner, repo,
                 branch.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
         }
     }
