@@ -6,7 +6,9 @@ jobs:
       image: codeberg.org/jzbor/nie:latest
     steps:
       - name: Checkout Code
-        uses: https://codeberg.org/nix-actions/checkout@main
+        run: |
+          git clone --depth 1 --revision $GITHUB_SHA $GITHUB_SERVER_URL/$GITHUB_REPOSITORY .
+          git checkout -B $GITHUB_REF_NAME
 
       - name: nie check
         run: nie check .
