@@ -2,13 +2,14 @@
 name = "nie-nix"
 version = "0.1.0"
 edition = "2024"
+description = "Alternative Nix CLI to run and build remote derivations"
 
 [[bin]]
 name = "nie"
 path = "src/main.rs"
 
 [dependencies]
-clap = { version = "4.5.53", features = ["derive", "unstable-v5", "unstable-doc"] }
+clap = { version = "4.5.53", features = ["derive", "unstable-v5", "unstable-doc", "unstable-markdown" ] }
 clap_complete = "4.5.62"
 clap_mangen = "0.2.31"
 colored = "3.0.0"

@@ -9,7 +9,8 @@ let
   cfLib = import (pins.cf + /libpkgs.nix) pkgs;
 
   nixFilter = path: _type: builtins.match ".*nix$" path != null;
-  cargoFilter = path: type: (nixFilter path type) || (craneLib.filterCargoSources path type);
+  readmeFilter = path: _type: builtins.match ".*README.md$" path != null;
+  cargoFilter = path: type: (nixFilter path type) || (readmeFilter path type) || (craneLib.filterCargoSources path type);
 
   cargoArtifacts = craneLib.buildDepsOnly commonArgs;
   commonArgs = {

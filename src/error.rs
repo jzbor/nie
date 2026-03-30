@@ -59,6 +59,9 @@ pub enum NieError {
     #[error("Program not found: {0}")]
     ProgramNotFound(Box<NixReference>),
 
+    #[error("Man page not found: {0}")]
+    ManNotFound(Box<NixReference>),
+
     #[error("No checks found for {0}")]
     NoChecksFound(Box<NixReference>),
 

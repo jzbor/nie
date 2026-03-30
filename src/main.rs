@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::collections::HashMap;
 
 use clap::Parser;
@@ -21,7 +23,88 @@ const ENV_TRACE_EXEC: &str = "NIE_TRACE_EXEC";
 
 
 #[derive(Parser)]
-#[command(version, about, long_about)]
+#[command(version, author, name = "nie")]
+/// Alternative Nix CLI to run and build remote derivations.
+///
+/// ## Resource Identifiers
+/// `nie` addresses repositories with resource identifiers somewhat similar to Flake references and
+/// URIs.
+/// Those resource identifiers consist of multiple tokens separated by a number sign (`#`).
+/// The first of those tokens is expected to be a [location reference](#resource-identifiers-location-references).
+/// Any following token may be an [output selector](#resource-identifiers-output-selector)
+/// or a [key-value argument](#resource-identifiers-key-value-arguments).
+///
+/// ### Resource Identifiers - Examples
+/// ```
+/// github://nixos/nixpkgs/nixos-unstable#hello
+/// git@github.com:nixos/nixpkgs#coreutils
+/// codeberg://mergiraf/mergiraf
+/// ```
+///
+/// ### Resource Identifiers - Location References
+/// * **Git** (`git://<git_url>`):
+///   Uses [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit)
+///   to fetch a repository from an arbitrary git source.
+///   Sources are cloned shallowly by default and includes submodules.
+///
+/// * **Tarballs** (`<url>`):
+///   Uses the [`fetchTarball`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchTarball)
+///   to fetch a remote tarball.
+///
+/// * **Local** (`file://<path>`):
+///   Uses [`nix-store --add`](https://nix.dev/manual/nix/stable/command-ref/nix-store/add.html)
+///   copy a local directory into the store.
+///
+/// * **Codeberg** (`codeberg://<owner>/<repo>/<ref>`):
+///   Uses the [`fetchTarball`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchTarball)
+///   to fetch a repository from a codeberg.org endpoint.
+///   Falls back to [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit).
+///
+/// * **GitHub** (`github://<owner>/<repo>/<branch>`):
+///   Uses the [`fetchTarball`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchTarball)
+///   to fetch a repository from a github.com endpoint.
+///   Falls back to [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit).
+///
+/// If no specific prefix is given, `nie` tries to guess the desired location.
+///
+/// ### Resource Identifiers - Output Selector
+/// The non-initial token that does not contain an equals sign (`=`) is regarded as the output
+/// selector.
+/// It specifies which output/derivation of the repository should be used/built.
+/// If there is no exact match `nie` tries to guess the appropriate path (e.g. by trying to prefix
+/// `packages.<system>` or similar common paths.
+///
+/// ### Resource Identifiers - Key-Value Arguments
+/// Other tokens can specify key-value-arguments in the form `<key>=<value>`:
+///
+/// * `file` (or short `f`): Specify which file from the repo shall be used.
+///
+/// * Git fetcher: all arguments for
+///   [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit)
+///   can be overwritten.
+///
+/// * Tarball fetcher: all arguments for
+///   [`fetchTarball`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchTarball)
+///   can be overwritten.
+///
+/// * Local fetcher: pass `nocopy=true` to avoid copying the path to the store.
+///
+/// * Codeberg fetcher: `ref` can be overwritten with as k/v argument. If the fetcher falls back to
+///   [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit)
+///   all of its arguments can also be overwritten.
+///
+/// * Github fetcher: `branch` can be overwritten with as k/v argument. `tag` can be given specified
+///   as k/v argument. If the fetcher falls back to
+///   [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit)
+///   all of its arguments can also be overwritten.
+///
+/// ## Aliases
+/// `nie` allows users to specify aliases for [locations](#resource-identifiers-location-references).
+/// They are stored as simple space-separated key-value pairs in `$XDG_CONFIG_DIRS/nie/aliases.txt` and
+/// `$XDG_CONFIG_HOME/nie/aliases.txt`.
+///
+/// You can interactively manage those aliases via the `aliases` subcommand.
+///
 pub struct Args {
     #[clap(subcommand)]
     subcommand: Subcommand,

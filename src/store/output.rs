@@ -105,6 +105,24 @@ impl NixOutput {
             .ok()
     }
 
+    pub fn man_path(&self) -> Option<PathBuf> {
+
+        let self_read = self.0.read().unwrap();
+        let built_paths = self_read.built_paths.as_ref();
+        let first_built_path = built_paths.and_then(|bp| bp.first())?;
+        let drv_name = match self.drv_name() {
+            Ok(name) => name,
+            Err(_) => return None,
+        };
+
+        let man_path = first_built_path.join("share")
+            .join("man")
+            .join("man1")
+            .join(format!("{}.1.gz", drv_name));
+
+        Some(man_path)
+    }
+
     pub fn reference(&self) -> NixReference {
         self.file().reference().with_attribute(self.attr())
     }
