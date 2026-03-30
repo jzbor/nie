@@ -14,6 +14,9 @@ pub struct RunCommand {
     #[arg(default_value = ".")]
     reference: NixReference,
 
+    #[arg(short, long)]
+    man: bool,
+
     #[clap(flatten)]
     eval_args: EvalArgs,
 
@@ -29,14 +32,26 @@ impl super::Command for RunCommand {
         let file = NixFile::fetch(self.reference.file(), self.eval_args)?;
         let output = file.output(self.reference.attribute().clone(), &default)?;
         output.build(false, &[], None)?;
-        let bin_path = output.main_program()
-            .ok_or_else(|| NieError::ProgramNotFound(self.reference.into()))?;
 
-        inform(&format!("Executing {}", bin_path.to_string_lossy()));
-        println!();
-        match nix::exec(bin_path.to_string_lossy().to_string().as_str(), self.args) {
-            Err(NieError::ExternalCommand(_, code)) => process::exit(code),
-            other => other,
+        if self.man {
+            let man_path = output.man_path()
+                .ok_or_else(|| NieError::ManNotFound(self.reference.into()))?;
+            inform(&format!("Opening man page {}", man_path.to_string_lossy()));
+            println!();
+            match nix::exec("man", [man_path.to_string_lossy().to_string().as_str()]) {
+                Err(NieError::ExternalCommand(_, code)) => process::exit(code),
+                other => other,
+            }
+        } else {
+            let bin_path = output.main_program()
+                .ok_or_else(|| NieError::ProgramNotFound(self.reference.into()))?;
+
+            inform(&format!("Executing {}", bin_path.to_string_lossy()));
+            println!();
+            match nix::exec(bin_path.to_string_lossy().to_string().as_str(), self.args) {
+                Err(NieError::ExternalCommand(_, code)) => process::exit(code),
+                other => other,
+            }
         }
     }
 }
