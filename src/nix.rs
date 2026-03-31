@@ -67,7 +67,7 @@ pub fn fetch_tarball(url: &str, args: &BTreeMap<String, String>) -> NieResult<Pa
     }
 }
 
-pub fn fetch_codeberg(owner: &str, repo: &str, gitref: Option<&str>, args: &BTreeMap<String, String>)
+pub fn fetch_forgejo(domain: &str, owner: &str, repo: &str, gitref: Option<&str>, args: &BTreeMap<String, String>)
         -> NieResult<PathBuf> {
     let gitref_arg = if let Some(gitref) = gitref {
         format!("\"{}\"", gitref)
@@ -80,7 +80,8 @@ pub fn fetch_codeberg(owner: &str, repo: &str, gitref: Option<&str>, args: &BTre
         "--raw",
         "--expr",
         "--log-format", "bar",
-        include_str!("./nix/fetch_codeberg.nix"),
+        include_str!("./nix/fetch_forgejo.nix"),
+        "--arg", "domain", &format!("\"{}\"", domain),
         "--arg", "owner", &format!("\"{}\"", owner),
         "--arg", "repo", &format!("\"{}\"", repo),
         "--arg", "ref", gitref_arg.as_str(),

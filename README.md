@@ -23,7 +23,7 @@ nie shell codeberg://jzbor/nie
 - Compatibility with Flakes is enabled by [lix-project/flake-compat](https://https://git.lix.systems/lix-project/flake-compat)
 
 ## Planned Features
-- [ ] Support for Forgejo instances other than https://codeberg.org
+- [x] Support for Forgejo instances other than https://codeberg.org
 - [ ] Support for Gitlab instances
 - [ ] Improved user feedback/output messages
 

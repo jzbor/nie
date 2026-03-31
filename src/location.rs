@@ -10,6 +10,7 @@ use crate::error::NieError;
 
 
 const RES_PREFIX_CODEBERG: &str = "codeberg://";
+const RES_PREFIX_FORGEJO: &str = "forgejo://";
 const RES_PREFIX_GIT: &str = "git://";
 const RES_PREFIX_GITHUB: &str = "github://";
 const RES_PREFIX_LOCAL: &str = "file://";
@@ -41,6 +42,7 @@ pub enum RepositoryLocation {
     Git(String),
     LocalFile(PathBuf),
     Tarball(String),
+    Forgejo(String, String, String, Option<String>),
     Codeberg(String, String, Option<String>),
     Github(String, String, Option<String>),
 }
@@ -171,6 +173,19 @@ impl FromStr for RepositoryLocation {
             }
 
             Ok(RepositoryLocation::Github(owner.to_owned(), repo.to_owned(), branch))
+        } else if let Some(rest) = s.strip_prefix(RES_PREFIX_FORGEJO) {
+            let (domain, rest) = rest.split_once('/')
+                .ok_or(())?;
+            let (owner, mut repo) = rest.split_once('/')
+                .ok_or(())?;
+            let mut gitref = None;
+
+            if let Some((r, g)) = repo.split_once('/') {
+                repo = r;
+                gitref = Some(g.to_owned());
+            }
+
+            Ok(RepositoryLocation::Forgejo(domain.to_owned(), owner.to_owned(), repo.to_owned(), gitref))
         } else if let Some(path) = s.strip_prefix(RES_PREFIX_LOCAL) {
             Ok(RepositoryLocation::LocalFile(PathBuf::from(path)))
         } else if let Some(repo) = s.strip_prefix(RES_PREFIX_GIT) {
@@ -232,6 +247,8 @@ impl Display for RepositoryLocation {
             LocalFile(path) => write!(f, "{}{}", RES_PREFIX_LOCAL, path.to_string_lossy()),
             Git(url) => write!(f, "{}{}", RES_PREFIX_GIT, url),
             Tarball(url) => write!(f, "tar://{}", url),
+            Forgejo(domain, owner, repo, gitref) => write!(f, "{}{}/{}/{}{}", RES_PREFIX_FORGEJO, domain, owner, repo,
+                gitref.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
             Codeberg(owner, repo, gitref) => write!(f, "{}{}/{}{}", RES_PREFIX_CODEBERG, owner, repo,
                 gitref.as_ref().map(|b| format!("/{}", b)).unwrap_or_default()),
             Github(owner, repo, branch) => write!(f, "{}{}/{}{}", RES_PREFIX_GITHUB, owner, repo,
