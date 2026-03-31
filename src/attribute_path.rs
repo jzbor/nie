@@ -96,10 +96,12 @@ impl AttributePath {
     pub fn common_package_locations() -> Vec<AttributePath> {
         let mut pkgs = vec![
             AttributePath::from("packages"),
+            AttributePath::from("legacyPackages"),
         ];
 
         if let Ok(system) = nix::current_system() {
             pkgs.push(AttributePath::from(format!("packages.{}", system).as_str()));
+            pkgs.push(AttributePath::from(format!("legacyPackages.{}", system).as_str()));
         }
 
         pkgs.push(AttributePath::default());
