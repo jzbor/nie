@@ -1,6 +1,6 @@
 [package]
 name = "nie-nix"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Alternative Nix CLI to run and build remote derivations"
 license = "MIT"
