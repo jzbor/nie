@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-use crate::interaction::inform;
+use crate::interaction::inform_create_dev_shell_pinned;
 use crate::store::output::NixOutput;
 use crate::{EvalArgs, nix};
 use crate::attribute_path::AttributePath;
@@ -89,7 +89,7 @@ impl super::Command for DevelopCommand {
                 && !self.shell_nix
                 && fs::exists(DEV_SHELL_DRV_ROOT)? {
             let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
-            inform(&format!("Creating dev shell from local gc root {} ({} days old)", DEV_SHELL_DRV_ROOT, link_age.as_secs() / (24 * 60 * 60)));
+            inform_create_dev_shell_pinned(link_age);
             nix::dev_shell(&PathBuf::from(DEV_SHELL_DRV_ROOT), &AttributePath::default(), &self.eval_args, command, &self.extra_args)
         } else {
             output.enter_dev_shell(command, &self.extra_args)
@@ -156,6 +156,6 @@ fn auto(command: DevelopCommand) -> NieResult<()> {
     }
 
     let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
-    inform(&format!("Automatically entering dev shell from local gc root {} ({} days old)", DEV_SHELL_DRV_ROOT, link_age.as_secs() / (24 * 60 * 60)));
+    inform_create_dev_shell_pinned(link_age);
     nix::dev_shell(&PathBuf::from(DEV_SHELL_DRV_ROOT), &AttributePath::default(), &command.eval_args, None, &command.extra_args)
 }

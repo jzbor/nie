@@ -2,7 +2,7 @@ use std::process;
 
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::inform;
+use crate::interaction::{inform_open_man, inform_run_binary};
 use crate::location::NixReference;
 use crate::store::file::NixFile;
 use crate::{EvalArgs, nix};
@@ -36,8 +36,8 @@ impl super::Command for RunCommand {
         if self.man {
             let man_path = output.man_path()
                 .ok_or_else(|| NieError::ManNotFound(self.reference.into()))?;
-            inform(&format!("Opening man page {}", man_path.to_string_lossy()));
-            println!();
+
+            inform_open_man(&man_path);
             match nix::exec("man", [man_path.to_string_lossy().to_string().as_str()]) {
                 Err(NieError::ExternalCommand(_, code)) => process::exit(code),
                 other => other,
@@ -46,7 +46,7 @@ impl super::Command for RunCommand {
             let bin_path = output.main_program()
                 .ok_or_else(|| NieError::ProgramNotFound(self.reference.into()))?;
 
-            inform(&format!("Executing {}", bin_path.to_string_lossy()));
+            inform_run_binary(&bin_path);
             println!();
             match nix::exec(bin_path.to_string_lossy().to_string().as_str(), self.args) {
                 Err(NieError::ExternalCommand(_, code)) => process::exit(code),

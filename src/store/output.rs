@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::inform;
+use crate::interaction::*;
 use crate::location::NixReference;
 use crate::store::checkout::Checkout;
 use crate::store::file::NixFile;
@@ -135,11 +135,7 @@ impl NixOutput {
             return Ok(paths.clone())
         }
 
-        inform(&format!("Building {} from {}{}{}",
-                attr.to_string_user(),
-                path.to_string_lossy(),
-                if self.file().flake_compat() { " with flake_compat" } else { "" },
-                if let Some(remote) = remote { format!(" on {}", remote) } else { String::new() }));
+        inform_build(&attr, &self.file(), self.file().flake_compat(), remote);
 
         let paths = if let Some(remote) = remote {
             let checkout = self.file().checkout();
@@ -157,11 +153,7 @@ impl NixOutput {
         let attr = self.attr().clone();
         let path = self.file().path();
 
-        if self.file().flake_compat() {
-            inform(&format!("Evaluating {} from {} with flake-compat", attr.to_string_user(), path.to_string_lossy()));
-        } else {
-            inform(&format!("Evaluating {} from {}", attr.to_string_user(), path.to_string_lossy()));
-        };
+        inform_eval(&attr, &self.file(), self.file().flake_compat());
 
         let output = nix::eval(&path, &attr, &self.file().eval_args(), extra_args)?;
         Ok(output)
@@ -171,7 +163,7 @@ impl NixOutput {
         let attr = self.attr().clone();
         let path = self.file().path();
 
-        inform(&format!("Creating dev shell {} from {}", attr.to_string_user(), path.to_string_lossy()));
+        inform_create_dev_shell(&attr, &self.file());
         nix::dev_shell(&path, &attr, &self.file().eval_args(), command, extra_args)
     }
 
@@ -179,7 +171,7 @@ impl NixOutput {
         let attr = self.attr().clone();
         let path = self.file().path();
 
-        inform(&format!("Creating gc root {} for derivation of {}", root.to_string_lossy(), attr));
+        inform_create_gc_root(root, &attr, &self.file());
         nix::create_root(&path, &attr, &self.file().eval_args(), root).map(|_| ())
     }
 

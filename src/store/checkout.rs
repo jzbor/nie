@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::error::NieResult;
-use crate::interaction::inform;
+use crate::interaction::*;
 use crate::location::{RepositoryLocation, RepositoryReference};
 use crate::store::file::NixFile;
 use crate::{EvalArgs, nix};
@@ -25,7 +25,7 @@ impl Checkout {
             return Ok(checkout);
         }
 
-        inform(&format!("Fetching {}", repository.location()));
+        inform_fetch(&repository);
 
         use RepositoryLocation::*;
         let path = match repository.location() {

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::{EvalArgs};
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::inform;
+use crate::interaction::{inform_init_from_template, inform_init_shell_nix};
 use crate::location::NixReference;
 use crate::store::checkout::Checkout;
 
@@ -68,7 +68,7 @@ impl super::Command for InitializeCommand {
                 .ok_or_else(|| NieError::NoOutputPath(reference.into()))?
         };
 
-        inform(&format!("Copying {} to {}", template.to_string_lossy(), self.destination.to_string_lossy()));
+        inform_init_from_template(&self.destination, &template);
         copy(&template, &self.destination, true)
     }
 }
@@ -76,8 +76,8 @@ impl super::Command for InitializeCommand {
 fn init_shell_nix(parent: &Path) -> Result<(), NieError> {
     let content = include_str!("../nix/template-shell.nix");
     let path = parent.join("shell.nix");
+    inform_init_shell_nix(&path);
     fs::write(&path, content.as_bytes())?;
-    inform(&format!("Create new shell file {}", path.to_string_lossy()));
     Ok(())
 }
 

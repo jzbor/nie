@@ -1,6 +1,6 @@
 use crate::attribute_path::AttributePath;
 use crate::error::NieResult;
-use crate::interaction::inform;
+use crate::interaction::inform_enter_shell;
 use crate::location::NixReference;
 use crate::{EvalArgs, nix};
 use crate::store::output::NixOutput;
@@ -32,7 +32,7 @@ impl super::Command for ShellCommand {
             .flatten()
             .collect();
 
-        inform(&format!("Entering shell with {} added paths", paths.len()));
+        inform_enter_shell(&paths);
         nix::shell(&paths, self.command, &self.eval_args, &self.extra_args)
     }
 }
