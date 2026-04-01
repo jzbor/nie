@@ -385,7 +385,7 @@ pub fn shell(paths: &[PathBuf], command: Option<String>, eval_args: &EvalArgs, e
         args.push(cmd);
     } else if let Ok(shell) = env::var("SHELL") {
         args.push("--command".to_owned());
-        args.push(shell);
+        args.push(format!("SHELL={} {}", shell, shell));
     }
 
     args.extend_from_slice(extra_args);
@@ -427,7 +427,7 @@ pub fn dev_shell(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, c
         args.push(cmd);
     } else if let Ok(shell) = env::var("SHELL") {
         args.push("--command".to_owned());
-        args.push(shell);
+        args.push(format!("SHELL={} {}", shell, shell));
     }
 
     args.extend_from_slice(extra_args);
