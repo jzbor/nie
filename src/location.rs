@@ -234,7 +234,7 @@ impl Display for RepositoryReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.location)?;
         for (k, v) in &self.checkout_args {
-            write!(f, "#{}:{}", k, v)?;
+            write!(f, "#{}={}", k, v)?;
         }
         Ok(())
     }
