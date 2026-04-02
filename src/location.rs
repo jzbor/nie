@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use crate::aliases;
 use crate::attribute_path::AttributePath;
-use crate::error::NieError;
+use crate::error::{NieError, NieResult};
 
 
 const RES_PREFIX_CODEBERG: &str = "codeberg://";
@@ -34,7 +34,7 @@ pub struct NixFileReference {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Default)]
 pub struct RepositoryReference {
     location: RepositoryLocation,
-    checkout_args: BTreeMap<String, String>,
+    fetch_args: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -80,8 +80,15 @@ impl RepositoryReference {
         &self.location
     }
 
-    pub fn checkout_args(&self) -> &BTreeMap<String, String> {
-        &self.checkout_args
+    pub fn fetch_args(&self) -> &BTreeMap<String, String> {
+        &self.fetch_args
+    }
+
+    pub fn fetch_args_json(&self) -> NieResult<BTreeMap<String, serde_json::Value>> {
+        self.fetch_args.iter()
+            .map(|(k, v)| serde_json::from_str(v).map(|v| (k.clone(), v)))
+            .collect::<serde_json::Result<_>>()
+            .map_err(|e| NieError::Json(e))
     }
 
     pub fn with_filename(&self, filename: Option<PathBuf>) -> NixFileReference {
@@ -135,7 +142,7 @@ impl FromStr for NixReference {
                 match k {
                     "f" | "file" => nref.file.filename = Some(v.into()),
                     _ => {
-                        nref.file.repository.checkout_args.insert(k.to_owned(), v.to_owned());
+                        nref.file.repository.fetch_args.insert(k.to_owned(), v.to_owned());
                     },
                 }
             } else {
@@ -209,7 +216,7 @@ impl Display for NixReference {
         if let Some(file) = &self.filename {
             write!(f, "#file={}", file.to_string_lossy())?;
         }
-        for (k, v) in &self.checkout_args {
+        for (k, v) in &self.fetch_args {
             write!(f, "#{}={}", k, v)?;
         }
         Ok(())
@@ -223,7 +230,7 @@ impl Display for NixFileReference {
         if let Some(file) = &self.filename {
             write!(f, "#file={}", file.to_string_lossy())?;
         }
-        for (k, v) in &self.checkout_args {
+        for (k, v) in &self.fetch_args {
             write!(f, "#{}={}", k, v)?;
         }
         Ok(())
@@ -233,7 +240,7 @@ impl Display for NixFileReference {
 impl Display for RepositoryReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.location)?;
-        for (k, v) in &self.checkout_args {
+        for (k, v) in &self.fetch_args {
             write!(f, "#{}={}", k, v)?;
         }
         Ok(())

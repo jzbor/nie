@@ -1,10 +1,13 @@
-use std::collections::{BTreeMap, VecDeque};
-use std::env;
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::{env, fs};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{self, Stdio};
 use std::time::Instant;
 
+use serde_json::json;
+
+use crate::location::{RepositoryLocation, RepositoryReference};
 use crate::{ENV_TRACE_EXEC, EvalArgs};
 use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
@@ -33,91 +36,72 @@ pub fn fetch_local(path: &Path, args: &BTreeMap<String, String>) -> NieResult<Pa
     }
 }
 
-pub fn fetch_git(url: &str, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
-    let out = exec_output("nix-instantiate", [
-        "--eval",
-        "--raw",
-        "--expr",
-        "--log-format", "bar",
-        include_str!("./nix/fetch_git.nix"),
-        "--arg", "url", &escape_url(url),
-        "--arg", "args", serialize_args(args).as_str(),
-    ])?;
+fn location_to_fetcher_args(reference: &RepositoryReference) -> NieResult<serde_json::Value> {
+    let mut args = reference.fetch_args_json()?;
 
-    match out.lines().next() {
-        Some(line) => Ok(PathBuf::from(line)),
-        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
-    }
-}
-
-pub fn fetch_tarball(url: &str, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
-    let out = exec_output("nix-instantiate", [
-        "--eval",
-        "--raw",
-        "--expr",
-        "--log-format", "bar",
-        include_str!("./nix/fetch_tarball.nix"),
-        "--arg", "url", &escape_url(url),
-        "--arg", "args", serialize_args(args).as_str(),
-    ])?;
-
-    match out.lines().next() {
-        Some(line) => Ok(PathBuf::from(line)),
-        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
-    }
-}
-
-pub fn fetch_forgejo(domain: &str, owner: &str, repo: &str, gitref: Option<&str>, args: &BTreeMap<String, String>)
-        -> NieResult<PathBuf> {
-    let gitref_arg = if let Some(gitref) = gitref {
-        format!("\"{}\"", gitref)
-    } else {
-        "null".to_owned()
+    use RepositoryLocation::*;
+    match reference.location() {
+        LocalFile(_) => panic!("Local files cannot be fetched through evaluation"),
+        Git(url) => {
+            args.insert("fetchType".to_owned(), json!("git"));
+            args.insert("url".to_owned(), json!(canonicalize_url(url)));
+        },
+        Tarball(url) => {
+            args.insert("fetchType".to_owned(), json!("tarball"));
+            args.insert("url".to_owned(), json!(url));
+        },
+        Forgejo(domain, owner, repo, gitref) => {
+            args.insert("fetchType".to_owned(), json!("forgejo"));
+            args.insert("domain".to_owned(), json!(domain));
+            args.insert("owner".to_owned(), json!(owner));
+            args.insert("repo".to_owned(), json!(repo));
+            if let Some(gitref) = gitref {
+                args.insert("ref".to_owned(), json!(gitref));
+            }
+        },
+        Codeberg(owner, repo, gitref) => {
+            args.insert("fetchType".to_owned(), json!("forgejo"));
+            args.insert("domain".to_owned(), json!("codeberg.org"));
+            args.insert("owner".to_owned(), json!(owner));
+            args.insert("repo".to_owned(), json!(repo));
+            if let Some(gitref) = gitref {
+                args.insert("ref".to_owned(), json!(gitref));
+            }
+        }
+        Github(owner, repo, branch) => {
+            args.insert("fetchType".to_owned(), json!("github"));
+            args.insert("owner".to_owned(), json!(owner));
+            args.insert("repo".to_owned(), json!(repo));
+            if let Some(branch) = branch {
+                args.insert("branch".to_owned(), json!(branch));
+            }
+        }
     };
 
-    let out = exec_output("nix-instantiate", [
-        "--eval",
-        "--raw",
-        "--expr",
-        "--log-format", "bar",
-        include_str!("./nix/fetch_forgejo.nix"),
-        "--arg", "domain", &format!("\"{}\"", domain),
-        "--arg", "owner", &format!("\"{}\"", owner),
-        "--arg", "repo", &format!("\"{}\"", repo),
-        "--arg", "ref", gitref_arg.as_str(),
-        "--arg", "args", serialize_args(args).as_str(),
-    ])?;
-
-    match out.lines().next() {
-        Some(line) => Ok(PathBuf::from(line)),
-        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
-    }
+    let map: serde_json::Map<String, serde_json::Value> = args.into_iter().collect();
+    Ok(serde_json::Value::from(map))
 }
 
-pub fn fetch_github(owner: &str, repo: &str, branch: Option<&str>, args: &BTreeMap<String, String>)
-        -> NieResult<PathBuf> {
-    let branch_arg = if let Some(branch) = branch {
-        format!("\"{}\"", branch)
-    } else {
-        "null".to_owned()
-    };
 
-    let out = exec_output("nix-instantiate", [
+pub fn fetch_all(sources: &[RepositoryReference]) -> NieResult<Vec<PathBuf>> {
+    let args: Vec<_> = sources.into_iter()
+        .map(location_to_fetcher_args)
+        .collect::<NieResult<_>>()?;
+    let args_json = serde_json::to_string(&serde_json::Value::from(args))?;
+    eprintln!("args_json: {}", args_json);
+
+    let output = exec_output("nix-instantiate", [
         "--eval",
         "--raw",
         "--expr",
         "--log-format", "bar",
-        include_str!("./nix/fetch_github.nix"),
-        "--arg", "owner", &format!("\"{}\"", owner),
-        "--arg", "repo", &format!("\"{}\"", repo),
-        "--arg", "branch", branch_arg.as_str(),
-        "--arg", "args", serialize_args(args).as_str(),
+        include_str!("./nix/fetch_all.nix"),
+        "--argstr", "sourcesJSON", &args_json,
     ])?;
 
-    match out.lines().next() {
-        Some(line) => Ok(PathBuf::from(line)),
-        None => Err(NieError::MissingNixData(String::from("fetchGit store path"))),
-    }
+    Ok(output.lines()
+        .map(|l| PathBuf::from(l))
+        .collect())
 }
 
 pub fn has_attribute(file: &Path, attr: &AttributePath, eval_args: &EvalArgs) -> NieResult<bool> {
@@ -484,6 +468,20 @@ fn serialize_args(args: &BTreeMap<String, String>) -> String {
     serialized_args
 }
 
+fn canonicalize_url(url: &str) -> String {
+    if url == "." {
+        fs::canonicalize(url)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or(url.to_owned())
+    } else if ["./", "../", "/"].iter().any(|p| url.starts_with(p)) {
+        fs::canonicalize(url)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or(url.to_owned())
+    } else {
+        url.to_owned()
+    }
+}
+
 fn escape_url(url: &str) -> String {
     if url == "." {
         "./.".to_owned()
@@ -588,4 +586,3 @@ pub fn exec_output_json(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsS
         Ok(value)
     }
 }
-

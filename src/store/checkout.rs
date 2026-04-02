@@ -1,7 +1,8 @@
+use std::iter;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::error::NieResult;
+use crate::error::{NieError, NieResult};
 use crate::interaction::*;
 use crate::location::{RepositoryLocation, RepositoryReference};
 use crate::store::file::NixFile;
@@ -20,40 +21,66 @@ struct InnerCheckout {
 }
 
 impl Checkout {
+    fn new(repository: RepositoryReference, path: PathBuf) -> Self {
+        Checkout(Arc::new(InnerCheckout { repository, path }))
+    }
+
     pub fn create(repository: RepositoryReference) -> NieResult<Self> {
-        if let Some(checkout) = CHECKOUT_REGISTRY.lookup(&repository) {
-            return Ok(checkout);
-        }
-
-        inform_fetch(&repository);
-
-        use RepositoryLocation::*;
-        let path = match repository.location() {
-            LocalFile(file) => nix::fetch_local(file, repository.checkout_args())?,
-            Git(url) => nix::fetch_git(url, repository.checkout_args())?,
-            Tarball(url) => nix::fetch_tarball(url, repository.checkout_args())?,
-            Forgejo(domain, owner, repo, gitref) => nix::fetch_forgejo(domain, owner, repo,
-                gitref.as_ref().map(|s| s.as_str()), repository.checkout_args())?,
-            Codeberg(owner, repo, gitref) => nix::fetch_forgejo("codeberg.org", owner, repo,
-                gitref.as_ref().map(|s| s.as_str()), repository.checkout_args())?,
-            Github(owner, repo, branch) => nix::fetch_github(owner, repo,
-                branch.as_ref().map(|s| s.as_str()), repository.checkout_args())?,
-        };
-
-        let checkout = Checkout(Arc::new(InnerCheckout {
-            repository: repository.clone(),
-            path
-        }));
-
-        CHECKOUT_REGISTRY.store(repository.clone(), checkout.clone());
-
-        Ok(checkout)
+        Self::create_all([repository])
+            .map(|p| p.into_iter().next().unwrap())
     }
 
     pub fn create_all(repositories: impl IntoIterator<Item = RepositoryReference>) -> NieResult<Vec<Self>> {
-        repositories.into_iter()
-            .map(Self::create)
-            .collect()
+        use RepositoryLocation::*;
+        let repositories: Vec<_> = repositories.into_iter().collect();
+        inform_fetch_multiple(&repositories);
+
+        let (known, unknown): (Vec<_>, Vec<_>) = repositories.into_iter()
+                                   .enumerate()
+                                   .partition(|(_, r)| CHECKOUT_REGISTRY.lookup(&r).is_some());
+        let (unknown_local, unknown_other): (Vec<_>, Vec<_>) = unknown.into_iter()
+                                   .partition(|(_, r)| matches!(r.location(), LocalFile(..)));
+
+        let resolved_known: Vec<_> = known.into_iter()
+            .map(|(i, r)| (i, CHECKOUT_REGISTRY.lookup(&r).unwrap()))
+            .collect();
+
+        let resolved_local: Vec<_> = unknown_local.into_iter()
+            .map(|(i, r)| if let LocalFile(path) = r.location() {
+                nix::fetch_local(path, r.fetch_args())
+                    .map_err(|_| NieError::FetchFailure(r.clone()))
+                    .map(|p| (i, p, r))
+            } else {
+                panic!()
+            })
+            .map(|res| res.map(|(i, p, r)| (i, Checkout::new(r, p))))
+            .collect::<NieResult<_>>()?;
+
+        let (unknown_other_idx, unknown_other_rep): (Vec<_>, Vec<_>) = unknown_other.into_iter().unzip();
+        let fetched_other = nix::fetch_all(&unknown_other_rep)
+            .map_err(|_| if unknown_other_rep.len() == 1 {
+                NieError::FetchFailure(unknown_other_rep[0].clone())
+            } else {
+                NieError::FetchFailureMultiple(unknown_other_rep.len())
+            })?;
+        let resolved_other: Vec<_> = unknown_other_idx.into_iter()
+            .zip(fetched_other.into_iter())
+            .zip(unknown_other_rep)
+            .map(|((i, p), r)| (i, p, r))
+            .map(|(i, p, r)| (i, Checkout::new(r, p)))
+            .collect();
+
+        resolved_local.iter().for_each(|(_, c)| CHECKOUT_REGISTRY.store(c.repository().clone(), c.clone()));
+        resolved_other.iter().for_each(|(_, c)| CHECKOUT_REGISTRY.store(c.repository().clone(), c.clone()));
+
+        let mut all = Vec::new();
+        all.extend(resolved_known);
+        all.extend(resolved_local);
+        all.extend(resolved_other);
+
+        all.sort_by_key(|e| e.0);
+
+        Ok(all.into_iter().map(|(_, c)| c).collect())
     }
 
     pub fn file(&self, filename: Option<PathBuf>, eval_args: EvalArgs) -> NieResult<NixFile> {

@@ -5,7 +5,7 @@ use std::{io, process};
 use colored::Colorize;
 
 use crate::attribute_path::AttributePath;
-use crate::location::NixReference;
+use crate::location::{NixReference, RepositoryReference};
 
 pub type NieResult<T> = Result<T, NieError>;
 
@@ -13,6 +13,12 @@ pub type NieResult<T> = Result<T, NieError>;
 pub enum NieError {
     #[error("{0}")]
     Completions(String),
+
+    #[error("Failed to fetch {0}")]
+    FetchFailure(RepositoryReference),
+
+    #[error("Failed to fetch one or more out of {0} sources")]
+    FetchFailureMultiple(usize),
 
     #[error("{0}")]
     IO(#[from] io::Error),

@@ -11,8 +11,17 @@ pub fn inform(s: &str) {
     eprintln!("{}", s.to_string().bright_blue())
 }
 
-pub fn inform_fetch(repo: &RepositoryReference) {
-    inform(&format!("Fetching {}", repo.to_string().underline()))
+pub fn inform_fetch_multiple(repos: &[RepositoryReference]) {
+    let listed = match repos {
+        [] => String::new(),
+        [r0] => r0.to_string().underline().to_string(),
+        [r0, r1] => format!("{} and {}", r0.to_string().underline(), r1.to_string().underline()),
+        [r0, r1, r2] => format!("{}, {} and {}", r0.to_string().underline(),
+                                r1.to_string().underline(), r2.to_string().underline()),
+        [r0, r1, _, ..] => format!("{}, {} and {} more", r0.to_string().underline(),
+                                   r1.to_string().underline(), repos.len() - 2),
+    };
+    inform(&format!("Fetching {}", listed))
 }
 
 pub fn inform_build(attr: &AttributePath, file: &NixFile, flake_compat: bool, remote: Option<&str>) {
