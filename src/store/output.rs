@@ -66,8 +66,8 @@ impl NixOutput {
         let mut built = Vec::new();
         for (i, output) in outputs.into_iter().enumerate() {
             let rename = match i {
-                0 => Some(format!("result-{}", i)),
-                _ => Some("result".to_owned()),
+                0 => Some("result".to_owned()),
+                _ => Some(format!("result-{}", i)),
             };
 
             let out_path = output.build(rename.as_deref(), allow_out_links, extra_args, remote)
