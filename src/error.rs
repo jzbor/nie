@@ -1,11 +1,12 @@
+//! Error type and message definitions using [`thiserror`].
 use std::fmt::Display;
 use std::time::SystemTimeError;
 use std::{io, process};
 
 use colored::Colorize;
 
-use crate::attribute_path::AttributePath;
-use crate::location::{NixReference, RepositoryReference};
+use crate::location::{AttributePath, NixReference, RepositoryReference};
+
 
 pub type NieResult<T> = Result<T, NieError>;
 

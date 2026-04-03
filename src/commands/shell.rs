@@ -1,9 +1,8 @@
-use crate::attribute_path::AttributePath;
 use crate::error::NieResult;
-use crate::interaction::inform_enter_shell;
-use crate::location::NixReference;
+use crate::interact::inform_enter_shell;
+use crate::location::{AttributePath, NixReference};
+use crate::store::NixOutput;
 use crate::{EvalArgs, nix};
-use crate::store::output::NixOutput;
 
 
 #[derive(clap::Args)]

@@ -3,13 +3,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::SystemTime;
 
-use crate::interaction::inform_create_dev_shell_pinned;
-use crate::store::output::NixOutput;
-use crate::{EvalArgs, nix};
-use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::store::file::NixFile;
-use crate::location::NixReference;
+use crate::interact::inform_create_dev_shell_pinned;
+use crate::location::{AttributePath, NixReference};
+use crate::store::{NixFile, NixOutput};
+use crate::{EvalArgs, nix};
 
 
 const DEV_SHELL_DRV_ROOT: &str = ".nie-dev-shell/drv";

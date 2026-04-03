@@ -1,7 +1,9 @@
+/// A data structure to provide synchronized, globally static caches.
 use std::collections::HashMap;
 use std::sync::{LazyLock, RwLock};
 
 
+/// A data structure to provide synchronized, globally static caches based on a [`HashMap`].
 #[derive(Default)]
 pub struct Registry<K: Eq + std::hash::Hash, V: Clone>(LazyLock<RwLock<HashMap<K, V>>>);
 

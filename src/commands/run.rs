@@ -1,10 +1,9 @@
 use std::process;
 
-use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::{inform_open_man, inform_run_binary};
-use crate::location::NixReference;
-use crate::store::file::NixFile;
+use crate::interact::{inform_open_man, inform_run_binary};
+use crate::location::{AttributePath, NixReference};
+use crate::store::NixFile;
 use crate::{EvalArgs, nix};
 
 

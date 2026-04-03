@@ -1,8 +1,8 @@
 use std::iter;
 
 use crate::EvalArgs;
-use crate::interaction::announce;
-use crate::store::checkout::Checkout;
+use crate::interact::announce;
+use crate::store::Checkout;
 use crate::error::NieResult;
 use crate::location::NixReference;
 
@@ -33,14 +33,14 @@ impl super::Command for ShowCommand {
     fn exec(self) -> NieResult<()> {
         let repo_refs = self.refs.iter().map(|s| s.repository()).cloned();
         let filenames = self.refs.iter().map(|s| s.filename().cloned());
-        let checkouts = Checkout::create_all(repo_refs)?;
+        let checkouts = Checkout::fetch_all(repo_refs)?;
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), self.eval_args)?;
 
         for (reference, file) in iter::zip(self.refs.into_iter(), files.into_iter()) {
             let attributes = file.attributes(self.depth, self.reject_broken)?;
             announce(&format!("Outputs of \"{}\":", reference));
             for attr in attributes {
-                if (file.flake_compat() && attr.len() > 1 && attr.first().map(|c| c == "outputs").unwrap_or_default())
+                if (file.eval_args().flake_compat && attr.len() > 1 && attr.first().map(|c| c == "outputs").unwrap_or_default())
                     || !(reference.attribute().is_toplevel()
                         ||attr.is_indirect_child(reference.attribute())
                         || reference.attribute().is_indirect_child(&attr)

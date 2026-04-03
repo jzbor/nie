@@ -2,12 +2,11 @@ use std::fs::{self, Permissions};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
-use crate::{EvalArgs};
-use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::{inform_init_from_template, inform_init_shell_nix};
-use crate::location::NixReference;
-use crate::store::checkout::Checkout;
+use crate::interact::{inform_init_from_template, inform_init_shell_nix};
+use crate::location::{AttributePath, NixReference};
+use crate::store::Checkout;
+use crate::EvalArgs;
 
 
 #[derive(clap::Args)]
@@ -50,7 +49,7 @@ impl super::Command for InitializeCommand {
             panic!("Invalid template type");
         };
 
-        let checkout = Checkout::create(reference.repository().clone())?;
+        let checkout = Checkout::fetch(reference.repository().clone())?;
         let template = if self.direct {
             checkout.path().to_owned()
         } else {

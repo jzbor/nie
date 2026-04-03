@@ -8,10 +8,9 @@ use crate::commands::Command;
 use crate::error::NieResult;
 
 
-mod attribute_path;
 mod commands;
 mod error;
-mod interaction;
+mod interact;
 mod location;
 mod store;
 mod nix;
@@ -35,7 +34,7 @@ const ENV_TRACE_EXEC: &str = "NIE_TRACE_EXEC";
 /// or a [key-value argument](#resource-identifiers-key-value-arguments).
 ///
 /// ### Resource Identifiers - Examples
-/// ```
+/// ```text
 /// github://nixos/nixpkgs/nixos-unstable#hello
 /// git@github.com:nixos/nixpkgs#coreutils
 /// codeberg://mergiraf/mergiraf

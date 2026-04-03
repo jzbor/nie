@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
+//! Wrapper functions for interacting with the Nix daemon via the `nix-*` cli.
+use std::collections::{BTreeMap, VecDeque};
 use std::{env, fs};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -9,10 +10,11 @@ use serde_json::json;
 
 use crate::location::{RepositoryLocation, RepositoryReference};
 use crate::{ENV_TRACE_EXEC, EvalArgs};
-use crate::attribute_path::AttributePath;
+use crate::location::AttributePath;
 use crate::error::{NieError, NieResult};
 
 
+/// Copy a local directory to the Nix store using `nix-store --add`
 pub fn fetch_local(path: &Path, args: &BTreeMap<String, String>) -> NieResult<PathBuf> {
     let canonicalized = path.canonicalize()?;
     if canonicalized.starts_with("/nix/store") {
@@ -36,6 +38,7 @@ pub fn fetch_local(path: &Path, args: &BTreeMap<String, String>) -> NieResult<Pa
     }
 }
 
+/// Convert [`RepositoryReference`]s to arguments as expected by the `fetch_all.nix` function.
 fn location_to_fetcher_args(reference: &RepositoryReference) -> NieResult<serde_json::Value> {
     let mut args = reference.fetch_args_json()?;
 
@@ -83,12 +86,13 @@ fn location_to_fetcher_args(reference: &RepositoryReference) -> NieResult<serde_
 }
 
 
+/// Fetch multiple [`RepositoryReference`]s into the store via the `fetch_all.nix` function.
 pub fn fetch_all(sources: &[RepositoryReference]) -> NieResult<Vec<PathBuf>> {
-    let args: Vec<_> = sources.into_iter()
+    let args: Vec<_> = sources.iter()
         .map(location_to_fetcher_args)
         .collect::<NieResult<_>>()?;
     let args_json = serde_json::to_string(&serde_json::Value::from(args))?;
-    eprintln!("args_json: {}", args_json);
+    // eprintln!("args_json: {}", args_json);
 
     let output = exec_output("nix-instantiate", [
         "--eval",
@@ -100,10 +104,11 @@ pub fn fetch_all(sources: &[RepositoryReference]) -> NieResult<Vec<PathBuf>> {
     ])?;
 
     Ok(output.lines()
-        .map(|l| PathBuf::from(l))
+        .map(PathBuf::from)
         .collect())
 }
 
+/// Check whether a .nix file has a certain attribute.
 pub fn has_attribute(file: &Path, attr: &AttributePath, eval_args: &EvalArgs) -> NieResult<bool> {
     let output = if eval_args.flake_compat {
         let compat = include_str!("./nix/compat.nix");
@@ -144,6 +149,7 @@ pub fn has_attribute(file: &Path, attr: &AttributePath, eval_args: &EvalArgs) ->
     Ok(found)
 }
 
+/// Check whether a .nix file has the lambda type at the toplevel.
 pub fn is_lambda(file: &Path) -> NieResult<bool> {
     let output = exec_output("nix-instantiate", [
         "--eval",
@@ -156,6 +162,8 @@ pub fn is_lambda(file: &Path) -> NieResult<bool> {
     Ok(output.trim() == "lambda")
 }
 
+/// Return the current machine's Nix system String as specified by the builtin
+/// [`currentSystem`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-currentSystem).
 pub fn current_system() -> NieResult<String> {
     exec_output("nix-instantiate", [
         "--eval",
@@ -165,6 +173,7 @@ pub fn current_system() -> NieResult<String> {
     ])
 }
 
+/// Copy store paths to a remote machine via [`nix-copy-closure`](https://nix.dev/manual/nix/stable/command-ref/nix-copy-closure.html)
 pub fn push_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
     let mut args: VecDeque<_> =  paths.iter()
         .map(|p| p.to_string_lossy().to_string())
@@ -174,6 +183,7 @@ pub fn push_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
     exec("nix-copy-closure", args)
 }
 
+/// Pull store paths from a remote machine via [`nix-copy-closure`](https://nix.dev/manual/nix/stable/command-ref/nix-copy-closure.html)
 pub fn pull_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
     let mut args: VecDeque<_> =  paths.iter()
         .map(|p| p.to_string_lossy().to_string())
@@ -184,6 +194,7 @@ pub fn pull_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
     exec("nix-copy-closure", args)
 }
 
+/// Build an output on a remote machine with [`nix-build`](https://nix.dev/manual/nix/stable/command-ref/nix-build.html) over ssh.
 pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, remote: &str, eval_args: &EvalArgs, extra_args: &[&str])
         -> NieResult<Vec<PathBuf>> {
     push_paths(inputs, remote)?;
@@ -252,6 +263,7 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
         .collect::<NieResult<_>>()
 }
 
+/// Build an output on a remote machine with [`nix-build`](https://nix.dev/manual/nix/stable/command-ref/nix-build.html).
 pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval_args: &EvalArgs, extra_args: &[&str])
         -> NieResult<Vec<PathBuf>> {
     let path_str = path.to_string_lossy().to_string();
@@ -312,6 +324,7 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval
         }).collect()
 }
 
+/// Evaluate an attribute using [`nix-instantiate`](https://nix.dev/manual/nix/stable/command-ref/nix-instantiate.html)
 pub fn eval(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, extra_args: &[String]) -> NieResult<String> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec!("--eval");
@@ -350,6 +363,7 @@ pub fn eval(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, extra_
     exec_output("nix-instantiate", &args)
 }
 
+/// Enter a shell containing `paths` using `nix-shell`.
 pub fn shell(paths: &[PathBuf], command: Option<String>, eval_args: &EvalArgs, extra_args: &[String]) -> NieResult<()> {
     let mut args = vec!();
 
@@ -376,6 +390,7 @@ pub fn shell(paths: &[PathBuf], command: Option<String>, eval_args: &EvalArgs, e
     exec("nix-shell", &args)
 }
 
+/// Enter a development shell described by `path` using `nix-shell`.
 pub fn dev_shell(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, command: Option<String>, extra_args: &[String]) -> NieResult<()> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
@@ -418,6 +433,7 @@ pub fn dev_shell(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, c
     exec("nix-shell", &args)
 }
 
+/// Create a garbage collection root for `path` using [`nix-instantiate`](https://nix.dev/manual/nix/stable/command-ref/nix-instantiate.html).
 pub fn create_root(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, root: &Path) -> NieResult<String> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
@@ -455,19 +471,8 @@ pub fn create_root(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs,
     exec_output("nix-instantiate", &args)
 }
 
-fn serialize_args(args: &BTreeMap<String, String>) -> String {
-    let mut serialized_args = String::new();
-    serialized_args.push_str("{ ");
-    for (k, v) in args {
-        serialized_args.push_str(k);
-        serialized_args.push_str(" = ");
-        serialized_args.push_str(v);
-        serialized_args.push_str("; ");
-    }
-    serialized_args.push('}');
-    serialized_args
-}
-
+/// Canonicalize local urls for use with nix
+/// (e.g. [`fetchGit`](https://nix.dev/manual/nix/stable/language/builtins.html#builtins-fetchGit)).
 fn canonicalize_url(url: &str) -> String {
     if url == "." {
         fs::canonicalize(url)
@@ -482,16 +487,7 @@ fn canonicalize_url(url: &str) -> String {
     }
 }
 
-fn escape_url(url: &str) -> String {
-    if url == "." {
-        "./.".to_owned()
-    } else if url.starts_with("./") || url.starts_with("/") {
-        url.to_owned()
-    } else {
-        format!("\"{}\"", url)
-    }
-}
-
+/// Execute a command
 pub fn exec(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<()> {
     let args: Vec<_> = args.into_iter().collect();
     let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
@@ -516,6 +512,7 @@ pub fn exec(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Nie
     }
 }
 
+/// Execute a command and capture its output
 pub fn exec_output(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<String> {
     let args: Vec<_> = args.into_iter().collect();
     let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
@@ -539,6 +536,7 @@ pub fn exec_output(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>)
     }
 }
 
+/// Execute a command and ignore its output
 pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<()> {
     let args: Vec<_> = args.into_iter().collect();
     let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());
@@ -563,6 +561,7 @@ pub fn exec_quiet(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) 
     }
 }
 
+/// Execute a command, capture its output and parse it as JSON value ([`serde_json::Value`])
 pub fn exec_output_json(cmd: &str, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> NieResult<serde_json::Value> {
     let args: Vec<_> = args.into_iter().collect();
     let start_time = env::var(ENV_TRACE_EXEC).ok().map(|_| Instant::now());

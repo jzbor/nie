@@ -1,7 +1,7 @@
 use crate::EvalArgs;
 use crate::error::NieResult;
 use crate::location::NixReference;
-use crate::store::checkout::Checkout;
+use crate::store::Checkout;
 
 
 #[derive(clap::Args)]
@@ -21,7 +21,7 @@ pub struct EvaluateCommand {
 
 impl super::Command for EvaluateCommand {
     fn exec(self) -> NieResult<()> {
-        let checkout = Checkout::create(self.reference.repository().clone())?;
+        let checkout = Checkout::fetch(self.reference.repository().clone())?;
         let file = checkout.file(self.reference.filename().cloned(), self.eval_args)?;
         let output = file.output(self.reference.attribute().to_owned(), &[])?;
         let stdout = output.eval(&self.extra_args)?;

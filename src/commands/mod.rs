@@ -1,3 +1,6 @@
+//! Subcommands available in the `nie` cli
+//!
+//! See also [`crate::Subcommand`].
 use crate::error::NieResult;
 
 pub mod aliases;

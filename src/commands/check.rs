@@ -2,12 +2,11 @@ use std::time::Instant;
 
 use colored::Colorize;
 
-use crate::{EvalArgs, nix};
-use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::interaction::announce;
-use crate::location::NixReference;
-use crate::store::checkout::Checkout;
+use crate::interact::announce;
+use crate::location::{AttributePath, NixReference};
+use crate::store::Checkout;
+use crate::{EvalArgs, nix};
 
 
 #[derive(clap::Args)]
@@ -35,7 +34,7 @@ pub struct CheckCommand {
 impl super::Command for CheckCommand {
     fn exec(self) -> NieResult<()> {
         let common = AttributePath::common_check_locations();
-        let checkout = Checkout::create(self.reference.repository().clone())?;
+        let checkout = Checkout::fetch(self.reference.repository().clone())?;
         let file = checkout.file(self.reference.filename().cloned(), self.eval_args)?;
 
         let checks = if *self.reference.attribute() != AttributePath::default() {

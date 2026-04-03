@@ -3,16 +3,24 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use crate::attribute_path::AttributePath;
 use crate::error::{NieError, NieResult};
-use crate::location::NixFileReference;
+use crate::location::{AttributePath, NixFileReference};
+use crate::registry::Registry;
 use crate::store::checkout::Checkout;
 use crate::store::output::NixOutput;
 use crate::{EvalArgs, nix};
-use crate::registry::Registry;
 
+
+/// Registry to cache known, already created [`NixFile`]s
 static FILE_REGISTRY: Registry<(NixFileReference, EvalArgs), NixFile> = Registry::new();
 
+
+/// A checked-out, locally available .nix file.
+///
+/// Derived from a [`Checkout`] (see [`Checkout::file()`] and [`Checkout::files()`]) and a filename as
+/// described by a [`crate::location::NixFileReference`].
+///
+/// Also contains additional [`EvalArgs`] to be used with the file.
 #[derive(Clone)]
 pub struct NixFile(Arc<RwLock<InnerNixFile>>);
 
@@ -71,10 +79,6 @@ impl NixFile {
         Ok(file)
     }
 
-    pub fn flake_compat(&self) -> bool {
-        self.0.read().unwrap().eval_args.flake_compat
-    }
-
     pub fn eval_args(&self) -> EvalArgs {
         self.0.read().unwrap().eval_args.clone()
     }
@@ -84,10 +88,14 @@ impl NixFile {
     }
 
     pub fn fetch(reference: &NixFileReference, eval_args: EvalArgs) -> NieResult<Self> {
-        let checkout = Checkout::create(reference.repository().clone())?;
+        let checkout = Checkout::fetch(reference.repository().clone())?;
         checkout.file(reference.filename().cloned(), eval_args)
     }
 
+    /// Creates a new [`NixOutput`] present in this file from an [`AttributePath`].
+    ///
+    /// Also takes a slice with suggested common locations to search in case `attr` is not directly
+    /// found at the toplevel.
     pub fn output(&self, mut attr: AttributePath, common_locations: &[AttributePath]) -> NieResult<NixOutput> {
         if attr == AttributePath::default() {
             for d in common_locations.iter().map(|l| l.child("default".to_owned())) {
@@ -108,6 +116,8 @@ impl NixFile {
         NixOutput::new(self.clone(), attr)
     }
 
+    /// Creates multiple outputs from an iterator over [`NixFile`]s and [`AttributePath`]s, see
+    /// also [`NixFile::output()`].
     pub fn outputs(files: impl IntoIterator<Item = (Self, AttributePath)>, common_locations: &[AttributePath])
             -> NieResult<Vec<NixOutput>> {
         files.into_iter()
@@ -120,6 +130,7 @@ impl NixFile {
         self.0.read().unwrap().checkout.repository().with_filename(filename)
     }
 
+    /// Check whether this file contains a certain Nix attribute, see also [`nix::has_attribute()`]
     pub fn has_attribute(&self, attr: &AttributePath) -> NieResult<bool> {
         if let Some(cached) = self.0.read().unwrap().cached_attributes.get(attr) {
             return Ok(*cached);
@@ -134,8 +145,13 @@ impl NixFile {
         res
     }
 
+    /// Create an iterator ([`AttributeIterator`]) over all attributes in this file up until a
+    /// certain `depth`.
+    ///
+    /// `reject_broken` specifies whether broken outputs encountered along the way should be
+    /// rejected or shown without error.
     pub fn attributes(&self, depth: u32, reject_broken: bool) -> NieResult<AttributeIterator<'_>> {
-        let full_expr = if self.flake_compat() {
+        let full_expr = if self.eval_args().flake_compat {
             include_str!("../nix/discover_flake.nix")
         } else {
             include_str!("../nix/discover.nix")
@@ -149,7 +165,7 @@ impl NixFile {
             "--arg", "maxdepth", depth.to_string().as_str(),
         ])?;
 
-        let attributes = if self.flake_compat() {
+        let attributes = if self.eval_args().flake_compat {
             Self::unfold_attributes_flake(vec!(), value, reject_broken)?.into()
         } else {
             Self::unfold_attributes(vec!(), AttributePath::default(), value, reject_broken)?.into()
@@ -161,6 +177,10 @@ impl NixFile {
         })
     }
 
+    /// "Unfold" attribute paths as given by the json output of `nix` into fully qualified
+    /// attribute paths.
+    ///
+    /// This is a helper for [`Self::attributes()`].
     fn unfold_attributes(mut acc: Vec<AttributePath>, parent: AttributePath,
             value: serde_json::Value, reject_broken: bool) -> NieResult<Vec<AttributePath>> {
         use serde_json::Value::*;
@@ -183,6 +203,11 @@ impl NixFile {
         Ok(acc)
     }
 
+    /// "Unfold" attribute paths as given by the json output of `nix` into fully qualified
+    /// attribute paths. Uses special parsing to compensate for different output with flake
+    /// compatibility.
+    ///
+    /// This is a helper for [`Self::attributes()`].
     fn unfold_attributes_flake(mut acc: Vec<AttributePath>,
             value: serde_json::Value, reject_broken: bool) -> NieResult<Vec<AttributePath>> {
         use serde_json::Value::*;

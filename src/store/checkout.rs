@@ -1,17 +1,21 @@
-use std::iter;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::error::{NieError, NieResult};
-use crate::interaction::*;
+use crate::interact::*;
 use crate::location::{RepositoryLocation, RepositoryReference};
 use crate::store::file::NixFile;
 use crate::{EvalArgs, nix};
 use crate::registry::Registry;
 
 
+/// Registry to cache known, already fetched [`Checkout`]s
 static CHECKOUT_REGISTRY: Registry<RepositoryReference, Checkout> = Registry::new();
 
+
+/// Local checkout of a repository
+///
+/// Derived from a [`RepositoryReference`] (see [`Checkout::fetch()`] and [`Checkout::fetch_all()`])
 #[derive(Clone)]
 pub struct Checkout(Arc<InnerCheckout>);
 
@@ -20,24 +24,29 @@ struct InnerCheckout {
     path: PathBuf,
 }
 
+
 impl Checkout {
     fn new(repository: RepositoryReference, path: PathBuf) -> Self {
         Checkout(Arc::new(InnerCheckout { repository, path }))
     }
 
-    pub fn create(repository: RepositoryReference) -> NieResult<Self> {
-        Self::create_all([repository])
+    /// Fetch a repository into the local store if necessary and create a new [`Checkout`] from it.
+    pub fn fetch(repository: RepositoryReference) -> NieResult<Self> {
+        Self::fetch_all([repository])
             .map(|p| p.into_iter().next().unwrap())
     }
 
-    pub fn create_all(repositories: impl IntoIterator<Item = RepositoryReference>) -> NieResult<Vec<Self>> {
+    /// Fetch all repositories into the local store if necessary and create new [`Checkout`]s from it.
+    ///
+    /// See also [`nix::fetch_local()`] and [`nix::fetch_all()`]
+    pub fn fetch_all(repositories: impl IntoIterator<Item = RepositoryReference>) -> NieResult<Vec<Self>> {
         use RepositoryLocation::*;
         let repositories: Vec<_> = repositories.into_iter().collect();
         inform_fetch_multiple(&repositories);
 
         let (known, unknown): (Vec<_>, Vec<_>) = repositories.into_iter()
                                    .enumerate()
-                                   .partition(|(_, r)| CHECKOUT_REGISTRY.lookup(&r).is_some());
+                                   .partition(|(_, r)| CHECKOUT_REGISTRY.lookup(r).is_some());
         let (unknown_local, unknown_other): (Vec<_>, Vec<_>) = unknown.into_iter()
                                    .partition(|(_, r)| matches!(r.location(), LocalFile(..)));
 
@@ -64,7 +73,7 @@ impl Checkout {
                 NieError::FetchFailureMultiple(unknown_other_rep.len())
             })?;
         let resolved_other: Vec<_> = unknown_other_idx.into_iter()
-            .zip(fetched_other.into_iter())
+            .zip(fetched_other)
             .zip(unknown_other_rep)
             .map(|((i, p), r)| (i, p, r))
             .map(|(i, p, r)| (i, Checkout::new(r, p)))
@@ -83,10 +92,12 @@ impl Checkout {
         Ok(all.into_iter().map(|(_, c)| c).collect())
     }
 
+    /// Creates a new [`NixFile`] from a file in this [`Checkout`].
     pub fn file(&self, filename: Option<PathBuf>, eval_args: EvalArgs) -> NieResult<NixFile> {
         NixFile::new(self.clone(), filename, eval_args)
     }
 
+    /// Creates a new [`NixFile`]s from an iterator over [`Checkout`]s and paths.
     pub fn files(files: impl IntoIterator<Item = (Self, Option<PathBuf>)>, eval_args: EvalArgs)
             -> NieResult<Vec<NixFile>> {
         files.into_iter()
