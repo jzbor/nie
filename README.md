@@ -14,7 +14,6 @@ nix-shell -E '(import (builtins.fetchGit { url = "https://codeberg.org/jzbor/nie
 nie shell codeberg://jzbor/nie
 ```
 
-
 ## Features
 - Fetch repositories from Codeberg, Github and other Git sources.
 - Discover packages and checks from `default.nix`, `flake.nix` or a custom Nix file.
@@ -22,8 +21,20 @@ nie shell codeberg://jzbor/nie
 - Pin shells for automatic or offline usage.
 - Compatibility with Flakes is enabled by [lix-project/flake-compat](https://https://git.lix.systems/lix-project/flake-compat)
 
-## Planned Features
-- [ ] Improved user feedback/output messages
+## Examples
+```sh
+# Show all outputs the `jzbor/nie` repo specifies in its `default.nix`
+nie show codeberg://jzbor/nie
+
+# Show all outputs the `jzbor/nie` repo specifies in its `flake.nix`
+nie show --flake-compat codeberg://jzbor/nie
+
+# Run the `hello` program from nixpkgs
+nie run github://nixos/nixpkgs/nixos-unstable#hello
+
+# View the man page for the `vim` program from nixpkgs
+nie run --man github://nixos/nixpkgs/nixos-unstable#cargo
+```
 
 ## Non-Goals
 - NixOS/HomeManager integration: You can use `nixos-rebuild`, `home-manager`, [`nh`](https://github.com/nix-community/nh) or custom scripts for those.
