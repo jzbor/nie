@@ -131,7 +131,9 @@ impl NixOutput {
         let self_read = self.0.read().unwrap();
         let built_paths = self_read.built_paths.as_ref();
         let first_built_path = built_paths.and_then(|bp| bp.first())?;
-        let name = self.main_program().map(|p| p.to_string_lossy().to_string())?;
+        let name = self.main_program()
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))?;
+
 
         let man_path = first_built_path.join("share")
             .join("man")
