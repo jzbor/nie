@@ -55,15 +55,21 @@ impl NixOutput {
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), eval_args.clone())?;
         let outputs = NixFile::outputs(iter::zip(files.iter().cloned(), attributes), common_locations)?;
 
-        outputs.into_iter()
-            .map(|o| o.build(allow_out_links, extra_args, remote)
+        let mut built = Vec::new();
+        for (i, output) in outputs.into_iter().enumerate() {
+            let rename = match i {
+                0 => Some(format!("result-{}", i)),
+                _ => Some("result".to_owned()),
+            };
+
+            let out_path = output.build(rename.as_ref().map(|s| s.as_str()), allow_out_links, extra_args, remote)
                 .and_then(|p| if p.is_empty() {
-                    Err(NieError::NoOutputPath(o.reference().into()))
-                } else {
-                    Ok(p)
-                })
-            )
-            .collect::<NieResult<Vec<_>>>()
+                    Err(NieError::NoOutputPath(output.reference().into()))
+                } else { Ok(p) })?;
+            built.push(out_path);
+        }
+
+        Ok(built)
     }
 
     pub fn file(&self) -> NixFile {
@@ -75,7 +81,7 @@ impl NixOutput {
     }
 
     pub fn drv_name(&self) -> NieResult<String> {
-        let paths = self.build(false, &[], None)?;
+        let paths = self.build(None, false, &[], None)?;
         let path = paths.first()
             .ok_or(NieError::NoOutputPath(Box::new(self.reference())))?;
 
@@ -127,7 +133,8 @@ impl NixOutput {
         self.file().reference().with_attribute(self.attr())
     }
 
-    pub fn build(&self, allow_out_links: bool, extra_args: &[String], remote: Option<&str>) -> NieResult<Vec<PathBuf>> {
+    pub fn build(&self, rename: Option<&str>, allow_out_links: bool, extra_args: &[String],
+            remote: Option<&str>) -> NieResult<Vec<PathBuf>> {
         let attr = self.attr().clone();
         let path = self.file().path();
 
@@ -135,14 +142,22 @@ impl NixOutput {
             return Ok(paths.clone())
         }
 
+        let extra_args: Vec<_> = if let Some(name) = rename {
+            let mut v = vec!["-o", name];
+            v.extend(extra_args.into_iter().map(|s| s.as_str()));
+            v
+        } else {
+            extra_args.into_iter().map(|s| s.as_str()).collect()
+        };
+
         inform_build(&attr, &self.file(), self.file().flake_compat(), remote);
 
         let paths = if let Some(remote) = remote {
             let checkout = self.file().checkout();
             let inputs = vec!(checkout.path().as_path());
-            nix::build_remote(&inputs, &path, &attr, remote, &self.file().eval_args(), extra_args)?
+            nix::build_remote(&inputs, &path, &attr, remote, &self.file().eval_args(), &extra_args)?
         } else {
-            nix::build(&path, &attr, allow_out_links, &self.file().eval_args(), extra_args)?
+            nix::build(&path, &attr, allow_out_links, &self.file().eval_args(), &extra_args)?
         };
 
         self.0.write().unwrap().built_paths = Some(paths.clone());

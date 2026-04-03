@@ -135,7 +135,7 @@ fn pin(output: &NixOutput) -> NieResult<()> {
         fs::create_dir_all(parent)?;
     }
 
-    output.build(true, &["-o", DEV_SHELL_ROOT].map(String::from), None)?;
+    output.build(Some(DEV_SHELL_ROOT), true, &[], None)?;
     output.create_drv_gc_root(&PathBuf::from(DEV_SHELL_DRV_ROOT))?;
 
     Ok(())

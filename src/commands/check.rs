@@ -79,7 +79,7 @@ impl super::Command for CheckCommand {
         for check in &checks {
             announce(&format!("Running check \"{}\"", check.reference().attribute()));
             let start_time = Instant::now();
-            let result = check.build(false, &self.extra_args, None);
+            let result = check.build(None, false, &self.extra_args, None);
             let end_time = Instant::now();
             let is_err = result.is_err();
             results.push(result);

@@ -31,7 +31,7 @@ impl super::Command for RunCommand {
         let default = AttributePath::common_package_locations();
         let file = NixFile::fetch(self.reference.file(), self.eval_args)?;
         let output = file.output(self.reference.attribute().clone(), &default)?;
-        output.build(false, &[], None)?;
+        output.build(None, false, &[], None)?;
 
         if self.man {
             let man_path = output.man_path()

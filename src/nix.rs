@@ -184,7 +184,7 @@ pub fn pull_paths(paths: &[&Path], remote: &str) -> NieResult<()> {
     exec("nix-copy-closure", args)
 }
 
-pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, remote: &str, eval_args: &EvalArgs, extra_args: &[String])
+pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, remote: &str, eval_args: &EvalArgs, extra_args: &[&str])
         -> NieResult<Vec<PathBuf>> {
     push_paths(inputs, remote)?;
 
@@ -231,7 +231,7 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
         args.push(value);
     }
 
-    args.extend(extra_args.iter().map(|s| s.as_str()));
+    args.extend(extra_args);
 
     let out = exec_output("ssh", &args)?;
     let paths: Vec<_> = out.lines()
@@ -252,7 +252,7 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
         .collect::<NieResult<_>>()
 }
 
-pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval_args: &EvalArgs, extra_args: &[String])
+pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval_args: &EvalArgs, extra_args: &[&str])
         -> NieResult<Vec<PathBuf>> {
     let path_str = path.to_string_lossy().to_string();
     let mut args = vec![
@@ -292,7 +292,7 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval
         args.push(value);
     }
 
-    args.extend(extra_args.iter().map(|s| s.as_str()));
+    args.extend(extra_args);
 
     let command = if exec_quiet("nom-build", ["--version"]).is_ok() {
         args.push("--log-format");
