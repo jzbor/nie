@@ -1,4 +1,4 @@
-use std::{env, fs, process};
+use std::{env, fs};
 use std::path::PathBuf;
 
 use crate::error::{NieError, NieResult, warn};
@@ -13,6 +13,16 @@ pub struct AutoShellCommand {
     update: bool,
 
     /// Emit `exit` command if the current directory is outside of the projects directory
+    ///
+    /// This has to be placed **after** the normal `nie auto-shell` hook inside an `eval` argument.
+    /// For example:
+    /// ```sh
+    /// nie auto-shell
+    /// eval "$(nie auto-shell --auto-exit)"
+    /// ```
+    ///
+    /// ***Note:** This option is somewhat fragile and it's implementation as well as it's presence
+    /// itself may be reevaluated and changed in the future.*
     #[arg(long)]
     auto_exit: bool,
 
@@ -49,7 +59,7 @@ impl super::Command for AutoShellCommand {
 
         if self.update {
             let _ = pinned_shell.update_from_ref(self.eval_args.clone())
-                .map_err(|e| warn(e));
+                .map_err(warn);
         }
 
         unsafe {
@@ -82,5 +92,5 @@ fn auto_exit() -> NieResult<()> {
                 link.to_string_lossy(), link.canonicalize()?.to_string_lossy());
         }
     }
-    return Ok(())
+    Ok(())
 }

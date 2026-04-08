@@ -117,9 +117,17 @@ enum Subcommand {
     /// Show and update aliases
     Aliases(commands::aliases::AliasesCommand),
 
-    /// Automatically enter development shell if local instantiation (see --pin) is found
+    /// Shell hook to automatically enter development shells
     ///
+    /// Automatically enter a development shell if a local instantiation is found (see `nie dev --pin`).
     /// Otherwise no action will be taken.
+    ///
+    /// This is intended to be used as a shell hook (e.g. in `$PROMPT_COMMAND` for
+    /// [bash](https://man.archlinux.org/man/bash.1#PROMPT_COMMAND) or `precmd()` for
+    /// [zsh](https://man.archlinux.org/man/zshmisc.1.en#precmd)):
+    /// ```sh
+    /// nie auto-shell
+    /// ```
     AutoShell(commands::auto_shell::AutoShellCommand),
 
     /// Run checks for a Nix repo
