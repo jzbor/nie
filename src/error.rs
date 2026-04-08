@@ -78,8 +78,14 @@ pub enum NieError {
     #[error("Missing environment variable \"{0}\"")]
     EnvVarMissing(&'static str),
 
-    #[error("Pinned shell points to unsafe path (\"{0}\")")]
-    PinnedShellNotInStore(String),
+    #[error("Pinned shell in \"{0}\" is not safe (either Git tracked or not in Nix store) ")]
+    PinnedShellNotSafe(String),
+
+    #[error("Pinned shell not found in {0}")]
+    PinnedShellNotFound(String),
+
+    #[error("Could not find shell parent for reverse cd")]
+    NoReverseCd(),
 }
 
 pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {
@@ -90,4 +96,8 @@ pub fn resolve<T, E: Display>(result: Result<T, E>) -> T {
             process::exit(1)
         },
     }
+}
+
+pub fn warn< E: Display>(err: E) {
+    eprintln!("{} {}", "Warning:".yellow(), err);
 }

@@ -65,9 +65,14 @@ pub fn inform_enter_dev_shell(attr: &AttributePath, file: &NixFile) {
 }
 
 /// Inform the user about entering a previously pinned development shell (see [`inform()`])
-pub fn inform_create_dev_shell_pinned(link_age: Duration) {
+pub fn inform_enter_pinned_shell(link_age: Duration) {
     inform(&format!("Entering dev shell from local pin ({} days old)",
             link_age.as_secs() / (24 * 60 * 60)));
+}
+
+/// Inform the user about entering a previously pinned development shell (see [`inform()`])
+pub fn inform_update_pinned_shell() {
+    inform("Updating local dev shell pin");
 }
 
 /// Inform the user about running a binary (see [`inform()`])

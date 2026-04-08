@@ -1,17 +1,10 @@
-use std::{env, fs};
-use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::SystemTime;
 
-use crate::error::{NieError, NieResult};
-use crate::interact::inform_create_dev_shell_pinned;
+use crate::error::{NieError, NieResult, warn};
 use crate::location::{AttributePath, NixReference};
-use crate::store::{NixFile, NixOutput};
-use crate::{EvalArgs, nix};
-
-
-const DEV_SHELL_DRV_ROOT: &str = ".nie-dev-shell/drv";
-const DEV_SHELL_ROOT: &str = ".nie-dev-shell/path";
+use crate::pinning::PinnedShell;
+use crate::store::NixFile;
+use crate::EvalArgs;
 
 
 #[derive(clap::Args)]
@@ -19,12 +12,6 @@ pub struct DevelopCommand {
     /// Nix references to fetch and add to shell
     #[arg(default_value = ".")]
     reference: NixReference,
-
-    /// Automatically enter development shell if local instantiation (see --pin) is found
-    ///
-    /// Do nothing otherwise.
-    #[arg(long)]
-    auto: bool,
 
     /// Run COMMAND inside the shell
     #[arg(short, long)]
@@ -41,6 +28,10 @@ pub struct DevelopCommand {
     /// Create a garbage collection root for the devShell and exit
     #[arg(short, long)]
     pin: bool,
+
+    /// Like --pin, but does nothing if there is not already a pin
+    #[arg(long)]
+    update_pin: bool,
 
     /// Do not use pinned dev shells if found
     #[arg(short, long)]
@@ -62,10 +53,10 @@ pub struct DevelopCommand {
 impl super::Command for DevelopCommand {
     fn exec(self) -> NieResult<()> {
         if self.unpin {
-            return unpin();
+            return PinnedShell::new_from_cwd()?.remove();
         }
-        if self.auto {
-            return auto(self);
+        if self.update_pin {
+            return PinnedShell::new_from_cwd()?.update_from_ref(self.eval_args);
         }
 
         let reference = if self.shell_nix {
@@ -79,81 +70,20 @@ impl super::Command for DevelopCommand {
         let command = if self.editor { Some(String::from("$EDITOR")) } else { self.command };
 
         if self.pin {
-            return pin(&output);
+            return PinnedShell::create_at_cwd(&output).map(|_| ());
         }
+
 
         if reference.attribute().is_toplevel()
                 && !self.no_pinned
                 && !self.shell_nix
-                && fs::exists(DEV_SHELL_DRV_ROOT)? {
-            let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
-            inform_create_dev_shell_pinned(link_age);
-            nix::dev_shell(&PathBuf::from(DEV_SHELL_DRV_ROOT), &AttributePath::default(), &self.eval_args, command, &self.extra_args)
+                && let Ok(pinned_shell) = PinnedShell::new_from_cwd() {
+            if !pinned_shell.is_safe()? {
+                warn(NieError::PinnedShellNotSafe(pinned_shell.pin_dir().to_string_lossy().to_string()));
+            }
+            pinned_shell.enter(command, &self.eval_args, &self.extra_args)
         } else {
             output.enter_dev_shell(command, &self.extra_args)
         }
     }
-}
-
-fn unpin() -> NieResult<()> {
-    eprintln!("Removing {}", DEV_SHELL_DRV_ROOT);
-    fs::remove_file(DEV_SHELL_DRV_ROOT)?;
-    eprintln!("Removing {}", DEV_SHELL_ROOT);
-    fs::remove_file(DEV_SHELL_ROOT)?;
-
-    if let Some(parent) = PathBuf::from(DEV_SHELL_DRV_ROOT).parent()
-            && parent.exists()
-            && parent.read_dir()?.flatten().count() == 0 {
-        eprintln!("Removing {}", parent.to_string_lossy());
-        fs::remove_dir(parent)?;
-    }
-
-    if let Some(parent) = PathBuf::from(DEV_SHELL_ROOT).parent()
-            && parent.exists()
-            && parent.read_dir()?.flatten().count() == 0 {
-        eprintln!("Removing {}", parent.to_string_lossy());
-        fs::remove_dir(parent)?;
-    }
-
-    Ok(())
-}
-
-fn pin(output: &NixOutput) -> NieResult<()> {
-    if fs::exists(DEV_SHELL_DRV_ROOT)? {
-        fs::remove_file(DEV_SHELL_DRV_ROOT)?;
-    }
-    if fs::exists(DEV_SHELL_ROOT)? {
-        fs::remove_file(DEV_SHELL_ROOT)?;
-    }
-
-    if let Some(parent) = PathBuf::from(DEV_SHELL_ROOT).parent() {
-        fs::create_dir_all(parent)?;
-    }
-    if let Some(parent) = PathBuf::from(DEV_SHELL_DRV_ROOT).parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    output.build(Some(DEV_SHELL_ROOT), true, &[], None)?;
-    output.create_drv_gc_root(&PathBuf::from(DEV_SHELL_DRV_ROOT))?;
-
-    Ok(())
-}
-
-fn auto(command: DevelopCommand) -> NieResult<()> {
-    // Return if already in a Nix shell
-    if env::var("IN_NIX_SHELL").is_ok() {
-        return Ok(())
-    }
-    // Return if no local instantiation exists
-    if !fs::exists(DEV_SHELL_DRV_ROOT)? {
-        return Ok(())
-    }
-    let canon = fs::canonicalize(DEV_SHELL_DRV_ROOT)?;
-    if !canon.starts_with("/nix/store/") {
-        return Err(NieError::PinnedShellNotInStore(canon.to_string_lossy().to_string()))
-    }
-
-    let link_age = SystemTime::elapsed(&fs::symlink_metadata(DEV_SHELL_DRV_ROOT)?.created()?)?;
-    inform_create_dev_shell_pinned(link_age);
-    nix::dev_shell(&PathBuf::from(DEV_SHELL_DRV_ROOT), &AttributePath::default(), &command.eval_args, None, &command.extra_args)
 }

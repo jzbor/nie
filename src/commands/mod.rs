@@ -4,6 +4,7 @@
 use crate::error::NieResult;
 
 pub mod aliases;
+pub mod auto_shell;
 pub mod build;
 pub mod check;
 pub mod completions;

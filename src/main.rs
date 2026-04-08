@@ -8,17 +8,20 @@ use crate::commands::Command;
 use crate::error::NieResult;
 
 
+mod aliases;
 mod commands;
 mod error;
 mod interact;
 mod location;
-mod store;
 mod nix;
+mod pinning;
 mod registry;
-mod aliases;
+mod store;
 
 
 const ENV_TRACE_EXEC: &str = "NIE_TRACE_EXEC";
+const ENV_AUTOSHELL_DIR: &str = "NIE_AUTOSHELL_DIR";
+const ENV_AUTOSHELL_PID: &str = "NIE_AUTOSHELL_PID";
 
 
 #[derive(Parser)]
@@ -113,6 +116,11 @@ pub struct Args {
 enum Subcommand {
     /// Show and update aliases
     Aliases(commands::aliases::AliasesCommand),
+
+    /// Automatically enter development shell if local instantiation (see --pin) is found
+    ///
+    /// Otherwise no action will be taken.
+    AutoShell(commands::auto_shell::AutoShellCommand),
 
     /// Run checks for a Nix repo
     Check(commands::check::CheckCommand),
@@ -241,6 +249,7 @@ fn main() {
     use Subcommand::*;
     let result = match args.subcommand {
         Aliases(cmd) => cmd.exec(),
+        AutoShell(cmd) => cmd.exec(),
         Build(cmd) => cmd.exec(),
         Check(cmd) => cmd.exec(),
         Completions(cmd) => cmd.exec(),
