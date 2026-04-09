@@ -9,6 +9,10 @@ use crate::{ENV_AUTOSHELL_DIR, ENV_AUTOSHELL_PID, EvalArgs};
 #[derive(clap::Args)]
 pub struct AutoShellCommand {
     /// Try to update the shell before entering
+    ///
+    /// ***Note:** This option may result in an increased delay when entering respective
+    /// directories.
+    /// It may also require a network connection to work as intended.
     #[arg(long)]
     update: bool,
 

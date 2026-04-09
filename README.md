@@ -39,3 +39,4 @@ nie run --man github://nixos/nixpkgs/nixos-unstable#cargo
 ## Non-Goals
 - NixOS/HomeManager integration: You can use `nixos-rebuild`, `home-manager`, [`nh`](https://github.com/nix-community/nh) or custom scripts for those.
 - Input pinning: Use [`npins`](https://github.com/andir/npins), [`niv`](https://github.com/nmattia/niv) or [`Nixtamal`](https://nixtamal.toast.al/).
+- Derivation and store analysis: Check out [`nix-tree`](https://github.com/utdemir/nix-tree) or [`nix-sweep`](https://github.com/jzbor/nix-sweep).
