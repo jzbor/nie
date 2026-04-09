@@ -1,12 +1,13 @@
 {
   system ? builtins.currentSystem,
-  pins ? import ./npins,
-  pkgs ? import pins.nixpkgs { inherit system; },
-  docker-nixpkgs ? pins.docker-nixpkgs { inherit pkgs; },
+  overrideSources ? {},
+  sources ? import ./npins // overrideSources,
+  pkgs ? import sources.nixpkgs { inherit system; },
+  docker-nixpkgs ? sources.docker-nixpkgs { inherit pkgs; },
 }:
 let
-  craneLib = import (pins.crane + /default.nix) { inherit pkgs; };
-  cfLib = import (pins.cf + /libpkgs.nix) pkgs;
+  craneLib = import (sources.crane + /default.nix) { inherit pkgs; };
+  cfLib = import (sources.cf + /libpkgs.nix) pkgs;
 
   nixFilter = path: _type: builtins.match ".*nix$" path != null;
   readmeFilter = path: _type: builtins.match ".*README.md$" path != null;
