@@ -23,11 +23,16 @@ impl super::Command for ManCommand {
         println!("Written {}", file.to_string_lossy());
 
         for subcommand in crate::Args::command().get_subcommands() {
-            let man = clap_mangen::Man::new(subcommand.clone());
+            let name = subcommand.get_name();
+            let command = subcommand
+                .clone()
+                .display_name(format!("nie-{name}"))
+                .bin_name(format!("nie {name}"));
+            let man = clap_mangen::Man::new(command);
             let mut buffer: Vec<u8> = Default::default();
             man.render(&mut buffer)
                 .map_err(|e| NieError::Man(e.to_string()))?;
-            let file = self.directory.join(format!("nie-{subcommand}.1"));
+            let file = self.directory.join(format!("nie-{name}.1"));
             fs::write(&file, buffer)
                 .map_err(|e| NieError::Man(e.to_string()))?;
             println!("Written {}", file.to_string_lossy());
