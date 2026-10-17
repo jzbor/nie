@@ -4,13 +4,27 @@ use std::time::Duration;
 
 use colored::Colorize;
 
+use crate::error::NieError;
 use crate::location::AttributePath;
 use crate::location::RepositoryReference;
-use crate::store::NixFile;
+use crate::store::{NixFile, NixOutput};
 
-/// Inform the user about something (highlights the message)
-pub fn inform(s: &str) {
-    eprintln!("{}", s.to_string().bright_blue())
+
+/// Format [`Duration`] into a human-readable string
+pub fn fmt_duration(duration: Duration) -> String {
+    let hours = duration.as_secs() / 3600;
+    let minutes = duration.as_secs() / 60 % 60;
+    let seconds = duration.as_secs() % 60;
+    let millis = duration.subsec_millis();
+    if hours > 0 {
+        format!("{}h {}m {}s", hours, minutes, seconds)
+    } else if minutes > 0 {
+        format!("{}m {}s {}ms", minutes, seconds, millis)
+    } else if seconds > 0 {
+        format!("{}s {}ms", seconds, millis)
+    } else {
+        format!("{}ms", millis)
+    }
 }
 
 /// Inform the user about fetching multiple sources (see [`inform()`])
@@ -93,6 +107,51 @@ pub fn inform_init_from_template(destination: &Path, source: &Path) {
 /// Inform the user about initializing a shell.nix file (see [`inform()`])
 pub fn inform_init_shell_nix(destination: &Path) {
     inform(&format!("Initializing {}", destination.to_string_lossy()));
+}
+
+/// Inform the user about the completion of a check
+pub fn inform_check_done(attr: &AttributePath, success: bool, duration: Duration) {
+    let status = if success {
+        "SUCCESSFULLY".green().bold()
+    } else {
+        "FAILED".red().bold()
+    };
+    println!("{} to build \"{}\" (took {})", status, attr, fmt_duration(duration))
+}
+
+pub fn inform_running_checks(checks: &[NixOutput]) {
+        println!();
+        announce(&format!("Running {} checks:", checks.len()));
+        for check in checks {
+            println!("  🔳 {}", check.reference().attribute());
+        }
+        println!();
+}
+
+pub fn inform_check_summary(checks: &[NixOutput], results: &[Result<Vec<PathBuf>, NieError>], duration: Duration) {
+    println!();
+    announce(&format!("Results (took {}):", fmt_duration(duration)));
+    for (i, check) in checks.iter().enumerate() {
+        let result = results.get(i);
+        match result {
+            Some(Ok(_)) => println!("  ✅ {}", check.reference().attribute()),
+            Some(Err(_)) => println!("  ❌ {}", check.reference().attribute()),
+            None => println!("  ❔ {}", check.reference().attribute()),
+        }
+    }
+    println!();
+    if results.iter().any(Result::is_err) {
+        println!("    {}", "FAILURE".red().bold())
+    } else {
+        println!("    {}", "SUCCESS".green().bold())
+    }
+    println!();
+
+}
+
+/// Inform the user about something (highlights the message)
+pub fn inform(s: &str) {
+    eprintln!("{}", s.to_string().bright_blue())
 }
 
 /// Announce an action or topic

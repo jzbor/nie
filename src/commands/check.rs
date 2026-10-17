@@ -1,9 +1,7 @@
 use std::time::Instant;
 
-use colored::Colorize;
-
 use crate::error::{NieError, NieResult};
-use crate::interact::announce;
+use crate::interact::{announce, inform_check_done, inform_check_summary, inform_running_checks};
 use crate::location::{AttributePath, NixReference};
 use crate::store::Checkout;
 use crate::{EvalArgs, nix};
@@ -66,12 +64,7 @@ impl super::Command for CheckCommand {
             return Err(NieError::NoChecksFound(self.reference.into()))
         }
 
-        println!();
-        announce(&format!("Running {} checks:", checks.len()));
-        for check in &checks {
-            println!("  🔳 {}", check.reference().attribute());
-        }
-        println!();
+        inform_running_checks(&checks);
 
         let start = Instant::now();
         let mut results = Vec::new();
@@ -80,40 +73,18 @@ impl super::Command for CheckCommand {
             let start_time = Instant::now();
             let result = check.build(None, false, &self.extra_args, None);
             let end_time = Instant::now();
-            let is_err = result.is_err();
+            let success = result.is_ok();
             results.push(result);
 
-            if is_err {
-                println!("{} to build \"{}\" (took {:?})", "FAILED".red().bold(),
-                    check.reference().attribute(), end_time - start_time)
-            } else {
-                println!("{} built \"{}\" (took {:?})", "SUCCESSFULLY".green().bold(),
-                    check.reference().attribute(), end_time - start_time)
-            }
+            inform_check_done(check.reference().attribute(), success, end_time - start_time);
 
-            if !self.keep_going && is_err {
+            if !self.keep_going && !success {
                 break;
             }
         }
         let end = Instant::now();
 
-        println!();
-        announce(&format!("Results (took {:?}):", end - start));
-        for (i, check) in checks.into_iter().enumerate() {
-            let result = results.get(i);
-            match result {
-                Some(Ok(_)) => println!("  ✅ {}", check.reference().attribute()),
-                Some(Err(_)) => println!("  ❌ {}", check.reference().attribute()),
-                None => println!("  ❔ {}", check.reference().attribute()),
-            }
-        }
-        println!();
-        if results.iter().any(Result::is_err) {
-            println!("    {}", "FAILURE".red().bold())
-        } else {
-            println!("    {}", "SUCCESS".green().bold())
-        }
-        println!();
+        inform_check_summary(&checks, &results, end - start);
 
         Ok(())
     }
