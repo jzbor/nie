@@ -111,12 +111,12 @@ pub fn inform_init_shell_nix(destination: &Path) {
 
 /// Inform the user about the checks that are about to be run
 pub fn inform_running_checks(checks: &[NixOutput]) {
-        println!();
-        announce(&format!("Running {} checks:", checks.len()));
-        for check in checks {
-            println!("  🔳 {}", check.reference().attribute());
-        }
-        println!();
+    eprintln!();
+    announce(&format!("Running {} checks:", checks.len()));
+    for check in checks {
+        eprintln!("  🔳 {}", check.reference().attribute());
+    }
+    eprintln!();
 }
 
 /// Inform the user about the completion of a check
@@ -126,29 +126,29 @@ pub fn inform_check_done(attr: &AttributePath, success: bool, duration: Duration
     } else {
         "FAILED".red().bold()
     };
-    println!("{} to build \"{}\" (took {})", status, attr, fmt_duration(duration))
+    eprintln!("{} to build \"{}\" (took {})", status, attr, fmt_duration(duration))
 }
 
 /// Inform the user about the results of the checks that were performed
 pub fn inform_check_summary(checks: &[NixOutput], results: &[Result<Vec<PathBuf>, NieError>], duration: Duration) {
-    println!();
+    eprintln!();
     announce(&format!("Results (took {}):", fmt_duration(duration)));
     for (i, check) in checks.iter().enumerate() {
         let result = results.get(i);
         match result {
-            Some(Ok(_)) => println!("  ✅ {}", check.reference().attribute()),
-            Some(Err(_)) => println!("  ❌ {}", check.reference().attribute()),
-            None => println!("  ❔ {}", check.reference().attribute()),
+            Some(Ok(_)) => eprintln!("  ✅ {}", check.reference().attribute()),
+            Some(Err(_)) => eprintln!("  ❌ {}", check.reference().attribute()),
+            None => eprintln!("  ❔ {}", check.reference().attribute()),
         }
     }
-    println!();
-    if results.iter().any(Result::is_err) {
-        println!("    {}", "FAILURE".red().bold())
-    } else {
-        println!("    {}", "SUCCESS".green().bold())
-    }
-    println!();
 
+    eprintln!();
+    if results.iter().any(Result::is_err) {
+        eprintln!("    {}", "FAILURE".red().bold())
+    } else {
+        eprintln!("    {}", "SUCCESS".green().bold())
+    }
+    eprintln!();
 }
 
 /// Inform the user about something (highlights the message)
