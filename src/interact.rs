@@ -109,6 +109,16 @@ pub fn inform_init_shell_nix(destination: &Path) {
     inform(&format!("Initializing {}", destination.to_string_lossy()));
 }
 
+/// Inform the user about the checks that are about to be run
+pub fn inform_running_checks(checks: &[NixOutput]) {
+        println!();
+        announce(&format!("Running {} checks:", checks.len()));
+        for check in checks {
+            println!("  🔳 {}", check.reference().attribute());
+        }
+        println!();
+}
+
 /// Inform the user about the completion of a check
 pub fn inform_check_done(attr: &AttributePath, success: bool, duration: Duration) {
     let status = if success {
@@ -119,15 +129,7 @@ pub fn inform_check_done(attr: &AttributePath, success: bool, duration: Duration
     println!("{} to build \"{}\" (took {})", status, attr, fmt_duration(duration))
 }
 
-pub fn inform_running_checks(checks: &[NixOutput]) {
-        println!();
-        announce(&format!("Running {} checks:", checks.len()));
-        for check in checks {
-            println!("  🔳 {}", check.reference().attribute());
-        }
-        println!();
-}
-
+/// Inform the user about the results of the checks that were performed
 pub fn inform_check_summary(checks: &[NixOutput], results: &[Result<Vec<PathBuf>, NieError>], duration: Duration) {
     println!();
     announce(&format!("Results (took {}):", fmt_duration(duration)));
