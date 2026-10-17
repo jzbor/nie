@@ -109,4 +109,6 @@ in rec {
       nix-prefetch-docker
     ];
   };
+
+  templates.default = ./template;
 }
