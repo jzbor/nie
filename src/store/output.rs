@@ -156,7 +156,6 @@ impl NixOutput {
     /// - `remote` may specify a host for remote building via ssh.
     pub fn build(&self, rename: Option<&str>, allow_out_links: bool, extra_args: &[String],
             remote: Option<&str>) -> NieResult<Vec<PathBuf>> {
-        eprintln!("allow_out_links: {}", allow_out_links);
         let attr = self.attr().clone();
         let path = self.file().path();
 

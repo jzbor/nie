@@ -1,3 +1,4 @@
+use std::process;
 use std::time::Instant;
 
 use crate::error::{NieError, NieResult};
@@ -85,6 +86,10 @@ impl super::Command for CheckCommand {
         let end = Instant::now();
 
         inform_check_summary(&checks, &results, end - start);
+
+        if results.iter().any(|c| c.is_err()) {
+            process::exit(1);
+        }
 
         Ok(())
     }
