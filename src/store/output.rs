@@ -156,6 +156,7 @@ impl NixOutput {
     /// - `remote` may specify a host for remote building via ssh.
     pub fn build(&self, rename: Option<&str>, allow_out_links: bool, extra_args: &[String],
             remote: Option<&str>) -> NieResult<Vec<PathBuf>> {
+        eprintln!("allow_out_links: {}", allow_out_links);
         let attr = self.attr().clone();
         let path = self.file().path();
 
@@ -163,7 +164,7 @@ impl NixOutput {
             return Ok(paths.clone())
         }
 
-        let extra_args: Vec<_> = if let Some(name) = rename {
+        let extra_args: Vec<_> = if allow_out_links && let Some(name) = rename {
             let mut v = vec!["-o", name];
             v.extend(extra_args.iter().map(|s| s.as_str()));
             v
