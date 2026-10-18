@@ -40,44 +40,46 @@ struct TemplateType {
 
 impl super::Command for InitializeCommand {
     fn exec(self) -> NieResult<()> {
-        let common = AttributePath::common_template_locations();
-        let reference = if let Some(reference) = self.template_type.reference {
-            reference
+        if let Some(reference) = self.template_type.reference {
+            init_by_reference(&reference, &self.destination, self.eval_args, self.direct)
         } else if self.template_type.shell_nix {
             return init_shell_nix(&self.destination);
         } else {
             panic!("Invalid template type");
-        };
-
-        let checkout = Checkout::fetch(reference.repository().clone())?;
-        let template = if self.direct {
-            checkout.path().to_owned()
-        } else {
-            let file = checkout.file(reference.filename().cloned(), self.eval_args)?;
-            let mut output = file.output(reference.attribute().clone(), &common)?;
-
-            if file.has_attribute(&output.attr().child("path".to_owned()))? {
-                output = file.output(output.attr().child("path".to_owned()), &common)?;
-            }
-
-            output.eval(&[])?
-                .lines()
-                .next()
-                .map(PathBuf::from)
-                .ok_or_else(|| NieError::NoOutputPath(reference.into()))?
-        };
-
-        inform_init_from_template(&self.destination, &template);
-        copy(&template, &self.destination, true)
+        }
     }
 }
 
-fn init_shell_nix(parent: &Path) -> Result<(), NieError> {
+fn init_shell_nix(parent: &Path) -> NieResult<()> {
     let content = include_str!("../nix/template-shell.nix");
     let path = parent.join("shell.nix");
     inform_init_shell_nix(&path);
     fs::write(&path, content.as_bytes())?;
     Ok(())
+}
+
+fn init_by_reference(reference: &NixReference, destination: &Path, eval_args: EvalArgs, direct: bool) -> NieResult<()> {
+    let common = AttributePath::common_template_locations();
+    let checkout = Checkout::fetch(reference.repository().clone())?;
+    let template = if direct {
+        checkout.path().to_owned()
+    } else {
+        let file = checkout.file(reference.filename().cloned(), eval_args)?;
+        let mut output = file.output(reference.attribute().clone(), &common)?;
+
+        if file.has_attribute(&output.attr().child("path".to_owned()))? {
+            output = file.output(output.attr().child("path".to_owned()), &common)?;
+        }
+
+        output.eval(&[])?
+            .lines()
+            .next()
+            .map(PathBuf::from)
+            .ok_or_else(|| NieError::NoOutputPath(reference.clone().into()))?
+    };
+
+    inform_init_from_template(&destination, &template);
+    copy(&template, &destination, true)
 }
 
 fn copy(from: &Path, to: &Path, toplevel: bool) -> NieResult<()> {
