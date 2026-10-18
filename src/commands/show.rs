@@ -36,7 +36,7 @@ impl super::Command for ShowCommand {
         let checkouts = Checkout::fetch_all(repo_refs)?;
         let files = Checkout::files(iter::zip(checkouts.iter().cloned(), filenames), self.eval_args)?;
 
-        for (reference, file) in iter::zip(self.refs.into_iter(), files.into_iter()) {
+        for (reference, file) in iter::zip(self.refs, files) {
             let attributes = file.attributes(self.depth, self.reject_broken)?;
             announce(&format!("Outputs of \"{}\":", reference));
             for attr in attributes {

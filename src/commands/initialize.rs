@@ -43,7 +43,7 @@ impl super::Command for InitializeCommand {
         if let Some(reference) = self.template_type.reference {
             init_by_reference(&reference, &self.destination, self.eval_args, self.direct)
         } else if self.template_type.shell_nix {
-            return init_shell_nix(&self.destination);
+            init_shell_nix(&self.destination)
         } else {
             panic!("Invalid template type");
         }
@@ -78,8 +78,8 @@ fn init_by_reference(reference: &NixReference, destination: &Path, eval_args: Ev
             .ok_or_else(|| NieError::NoOutputPath(reference.clone().into()))?
     };
 
-    inform_init_from_template(&destination, &template);
-    copy(&template, &destination, true)
+    inform_init_from_template(destination, &template);
+    copy(&template, destination, true)
 }
 
 fn copy(from: &Path, to: &Path, toplevel: bool) -> NieResult<()> {
