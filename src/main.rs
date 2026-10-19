@@ -219,20 +219,14 @@ impl EvalArgs {
         let mut map: HashMap<_, _> = self.expression_args().into_iter()
             .collect();
 
-        #[allow(unused_assignments)]
-        let mut current_system = String::new();
-        match &self.system {
-            Some(None) => {
-                current_system = format!("\"{}\"", nix::current_system()?);
+        let current_system = match &self.system {
+            Some(None) =>  format!("\"{}\"", nix::current_system()?),
+            Some(Some(s)) => format!("\"{}\"", s.as_str()),
+            None => String::new(),
+        };
+        if !current_system.is_empty() {
                 map.insert("system", &current_system);
-            },
-            Some(Some(s)) => {
-                current_system = format!("\"{}\"", s.as_str());
-                map.insert("system", current_system.as_str());
-            },
-            None => (),
         }
-
 
         s.push_str("{ ");
 

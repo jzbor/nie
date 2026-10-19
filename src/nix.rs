@@ -236,6 +236,17 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
         args.push(v);
     }
 
+    let system = match &eval_args.system {
+        Some(Some(sys)) => Some(sys.to_owned()),
+        Some(None) => Some(current_system()?),
+        None => None,
+    };
+    if let Some(sys) = &system {
+        args.push("--argstr");
+        args.push("system");
+        args.push(&sys);
+    }
+
     for (key, value) in eval_args.expression_args() {
         args.push("--arg");
         args.push(key);
@@ -298,6 +309,17 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval
         args.push(v);
     }
 
+    let system = match &eval_args.system {
+        Some(Some(sys)) => Some(sys.to_owned()),
+        Some(None) => Some(current_system()?),
+        None => None,
+    };
+    if let Some(sys) = &system {
+        args.push("--argstr");
+        args.push("system");
+        args.push(&sys);
+    }
+
     for (key, value) in eval_args.expression_args() {
         args.push("--arg");
         args.push(key);
@@ -344,6 +366,17 @@ pub fn eval(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, extra_
     if !attribute.is_toplevel() {
         args.push("-A");
         args.push(&attribute_str);
+    }
+
+    let system = match &eval_args.system {
+        Some(Some(sys)) => Some(sys.to_owned()),
+        Some(None) => Some(current_system()?),
+        None => None,
+    };
+    if let Some(sys) = &system {
+        args.push("--argstr");
+        args.push("system");
+        args.push(&sys);
     }
 
     for (key, value) in eval_args.expression_args() {
@@ -409,6 +442,17 @@ pub fn dev_shell(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, c
         args.push(path_str);
     }
 
+    let system = match &eval_args.system {
+        Some(Some(sys)) => Some(sys.to_owned()),
+        Some(None) => Some(current_system()?),
+        None => None,
+    };
+    if let Some(sys) = &system {
+        args.push("--argstr".to_owned());
+        args.push("system".to_owned());
+        args.push(sys.clone());
+    }
+
     for (key, value) in eval_args.expression_args() {
         args.push("--arg".to_owned());
         args.push(key.to_owned());
@@ -450,6 +494,17 @@ pub fn create_root(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs,
         args.push(path_str.clone());
     } else {
         args.push(path_str);
+    }
+
+    let system = match &eval_args.system {
+        Some(Some(sys)) => Some(sys.to_owned()),
+        Some(None) => Some(current_system()?),
+        None => None,
+    };
+    if let Some(sys) = &system {
+        args.push("--argstr".to_owned());
+        args.push("system".to_owned());
+        args.push(sys.clone());
     }
 
     for (key, value) in eval_args.expression_args() {
