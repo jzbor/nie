@@ -19,8 +19,8 @@ pub struct InitializeCommand {
     destination: PathBuf,
 
     /// Use reference repository directly as template
-    #[arg(short, long)]
-    direct: bool,
+    #[arg(long)]
+    repo: bool,
 
     #[clap(flatten)]
     eval_args: EvalArgs,
@@ -35,13 +35,19 @@ struct TemplateType {
     /// Create a shell.nix file.
     #[arg(short, long)]
     shell_nix: bool,
+
+    /// Create a default.nix file.
+    #[arg(short, long)]
+    default_nix: bool,
 }
 
 
 impl super::Command for InitializeCommand {
     fn exec(self) -> NieResult<()> {
         if let Some(reference) = self.template_type.reference {
-            init_by_reference(&reference, &self.destination, self.eval_args, self.direct)
+            init_by_reference(&reference, &self.destination, self.eval_args, self.repo)
+        } else if self.template_type.default_nix {
+            init_default_nix(&self.destination)
         } else if self.template_type.shell_nix {
             init_shell_nix(&self.destination)
         } else {
@@ -53,6 +59,14 @@ impl super::Command for InitializeCommand {
 fn init_shell_nix(parent: &Path) -> NieResult<()> {
     let content = include_str!("../nix/template-shell.nix");
     let path = parent.join("shell.nix");
+    inform_init_shell_nix(&path);
+    fs::write(&path, content.as_bytes())?;
+    Ok(())
+}
+
+fn init_default_nix(parent: &Path) -> NieResult<()> {
+    let content = include_str!("../nix/template-default.nix");
+    let path = parent.join("default.nix");
     inform_init_shell_nix(&path);
     fs::write(&path, content.as_bytes())?;
     Ok(())
