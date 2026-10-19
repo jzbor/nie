@@ -141,16 +141,16 @@ enum Subcommand {
     Build(commands::build::BuildCommand),
 
     /// Enter a dev shell from a Nix repo
-    #[command(visible_alias = "dev", alias = "dev-shell")]
-    Develop(commands::develop::DevelopCommand),
+    #[command(visible_alias = "develop", alias = "dev-shell")]
+    Dev(commands::dev::DevCommand),
 
     /// Evaluate an expression from a Nix repo
-    #[command(visible_alias = "eval")]
-    Evaluate(commands::evaluate::EvaluateCommand),
+    #[command(visible_alias = "evaluate")]
+    Eval(commands::eval::EvalCommand),
 
     /// Initialize a new nix project from a template
-    #[command(visible_alias = "init", visible_alias = "initialise")]
-    Initialize(commands::initialize::InitializeCommand),
+    #[command(visible_alias = "initialize", visible_alias = "initialise")]
+    Init(commands::init::InitCommand),
 
     /// Generate man pages
     #[command(hide = true)]
@@ -261,9 +261,9 @@ fn main() {
         Build(cmd) => cmd.exec(),
         Check(cmd) => cmd.exec(),
         Completions(cmd) => cmd.exec(),
-        Develop(cmd) => cmd.exec(),
-        Evaluate(cmd) => cmd.exec(),
-        Initialize(cmd) => cmd.exec(),
+        Dev(cmd) => cmd.exec(),
+        Eval(cmd) => cmd.exec(),
+        Init(cmd) => cmd.exec(),
         Man(cmd) => cmd.exec(),
         Run(cmd) => cmd.exec(),
         Shell(cmd) => cmd.exec(),

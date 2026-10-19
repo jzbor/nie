@@ -5,7 +5,7 @@ use crate::store::Checkout;
 
 
 #[derive(clap::Args)]
-pub struct EvaluateCommand {
+pub struct EvalCommand {
     /// Nix references to fetch and build
     #[arg(default_value = ".")]
     reference: NixReference,
@@ -19,7 +19,7 @@ pub struct EvaluateCommand {
 }
 
 
-impl super::Command for EvaluateCommand {
+impl super::Command for EvalCommand {
     fn exec(self) -> NieResult<()> {
         let checkout = Checkout::fetch(self.reference.repository().clone())?;
         let file = checkout.file(self.reference.filename().cloned(), self.eval_args)?;

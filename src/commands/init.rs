@@ -10,7 +10,7 @@ use crate::EvalArgs;
 
 
 #[derive(clap::Args)]
-pub struct InitializeCommand {
+pub struct InitCommand {
     #[clap(flatten)]
     template_type: TemplateType,
 
@@ -42,7 +42,7 @@ struct TemplateType {
 }
 
 
-impl super::Command for InitializeCommand {
+impl super::Command for InitCommand {
     fn exec(self) -> NieResult<()> {
         if let Some(reference) = self.template_type.reference {
             init_by_reference(&reference, &self.destination, self.eval_args, self.repo)

@@ -8,7 +8,7 @@ use crate::EvalArgs;
 
 
 #[derive(clap::Args)]
-pub struct DevelopCommand {
+pub struct DevCommand {
     /// Nix references to fetch and add to shell
     #[arg(default_value = ".")]
     reference: NixReference,
@@ -50,7 +50,7 @@ pub struct DevelopCommand {
 }
 
 
-impl super::Command for DevelopCommand {
+impl super::Command for DevCommand {
     fn exec(self) -> NieResult<()> {
         if self.unpin {
             return PinnedShell::new_from_cwd()?.remove();
