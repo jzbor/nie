@@ -244,7 +244,7 @@ pub fn build_remote(inputs: &[&Path], path: &Path, attribute: &AttributePath, re
     if let Some(sys) = &system {
         args.push("--argstr");
         args.push("system");
-        args.push(&sys);
+        args.push(sys);
     }
 
     for (key, value) in eval_args.expression_args() {
@@ -317,7 +317,7 @@ pub fn build(path: &Path, attribute: &AttributePath, allow_out_links: bool, eval
     if let Some(sys) = &system {
         args.push("--argstr");
         args.push("system");
-        args.push(&sys);
+        args.push(sys);
     }
 
     for (key, value) in eval_args.expression_args() {
@@ -376,7 +376,7 @@ pub fn eval(path: &Path, attribute: &AttributePath, eval_args: &EvalArgs, extra_
     if let Some(sys) = &system {
         args.push("--argstr");
         args.push("system");
-        args.push(&sys);
+        args.push(sys);
     }
 
     for (key, value) in eval_args.expression_args() {
